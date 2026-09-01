@@ -1,0 +1,53 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# FastAPI / Python
+*.log
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+
+# Next.js environment files
+frontend/.env*
+!frontend/.env.example
+
+# Uploaded files / local storage
+uploads/
+storage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+.coverage
+htmlcov/
+
+# Database
+*.sqlite3
+
+# Build / temporary files
+dist/
+build/
