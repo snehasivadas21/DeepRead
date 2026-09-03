@@ -19,6 +19,16 @@ env/
 # FastAPI / Python
 *.log
 
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+
+# Next.js environment files
+frontend/.env*
+!frontend/.env.example
+
 # Uploaded files / local storage
 uploads/
 storage/
