@@ -13,6 +13,8 @@ from app.schemas.auth import RegisterRequest, RegisterResponse
 from app.services.auth import hash_password
 from app.services.email_verification import (generate_verication_token,hash_verification_token)
 
+from app.worker.tasks import send_verification_email
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 def get_db():
@@ -49,6 +51,36 @@ def register_user(user_data: RegisterRequest, db: Session = Depends(get_db),):
     db.add(verification)
     db.commit()
 
+    verification_url = ( f"http://localhost:8000/auth/verify-email?token={verification_token}")
+
+    send_verification_email.delay(recipient=new_user.email,verification_url=verification_url,)
+
     return new_user
     
-    
+
+@router.get("/verify-email")
+def verify_email(token: str, db:Session = Depends(get_db)):
+    token_hash = hash_verification_token(token)
+
+    verification = (db.query(EmailVerification).filter(EmailVerification.token_hash == token_hash).first())
+
+    if not verification:
+        raise HTTPException(status_code=400,detail="Invalid verification token")
+
+    if verification.verified_at is not None:
+        raise HTTPException(status_code=400,detail="Email already verified")
+
+    if verification.expires_at < datetime.utcnow():
+            raise HTTPException(status_code=400,detail="Verification token has expired")
+
+    user = (db.query(User).filter(User.id == verification.user.id).first())
+
+    if not user:
+        raise HTTPException(status_code=404,detail="User not found")
+
+    user.email_verified = True
+    verification.verified_at = datetime.utcnow()
+
+    db.commit()
+
+    return {"message":"Email verified successfully"}

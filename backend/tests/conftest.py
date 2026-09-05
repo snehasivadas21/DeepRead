@@ -8,6 +8,7 @@ from app.main import app
 from app.db.session import settings
 from app.api.auth import get_db
 from app.models.users import User
+from app.models.email_verification import EmailVerification
 
 
 TEST_DATABASE_URL = settings.TEST_DATABASE_URL
@@ -42,6 +43,7 @@ def db_session():
 
 @pytest.fixture
 def client(db_session):
+    db_session.query(EmailVerification).delete()
     db_session.query(User).delete()
     db_session.commit()
 
