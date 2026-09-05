@@ -7,6 +7,7 @@ from alembic import context
 
 from app.db.base import Base
 from app.models.users import User
+from app.models.email_verification import EmailVerification
 from app.db.session import settings
 
 # this is the Alembic Config object, which provides
