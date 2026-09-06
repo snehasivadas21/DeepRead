@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from datetime import datetime
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -43,3 +44,18 @@ class RefreshResponse(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+class ProfileResponse(BaseModel):
+    user_id: int
+    name: str
+    profile_image: str | None
+    email: EmailStr
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ProfileUpdateRequest(BaseModel):
+    name: str
+    profile_image: str | None = None

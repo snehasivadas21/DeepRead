@@ -11,9 +11,10 @@ from app.models.users import User
 from app.models.email_verification import EmailVerification
 from app.models.refresh_token import RefreshToken
 from app.models.password_reset_token import PasswordResetToken
+from app.models.user_profile import UserProfile
 
 from app.schemas.auth import (RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserResponse, 
-                              RefreshRequest, RefreshResponse, ResetPasswordRequest)
+                              RefreshRequest, RefreshResponse, ResetPasswordRequest, ProfileResponse, ProfileUpdateRequest)
 
 from app.services.auth import hash_password, verify_password, hash_refresh_token, generate_password_reset_token, hash_password_reset_token
 from app.services.email_verification import (generate_verication_token,hash_verification_token)
@@ -44,6 +45,10 @@ def register_user(user_data: RegisterRequest, db: Session = Depends(get_db),):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    db.flush()
+
+    profile = UserProfile(user_id=new_user.id,name=new_user.user_name,profile_image=None)
+    db.add(profile)
 
     verification_token = generate_verication_token()
     token_hash = hash_verification_token(verification_token)
@@ -245,6 +250,12 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     new_user = User(email=email,user_name=name,password_hash=None,is_active=True,email_verified=True,)
 
     db.add(new_user)
+    db.flush()
+
+    profile = UserProfile(user_id=new_user.id,name=name,profile_image=user_info.get("picture"))
+
+    db.add(profile)
+
     db.commit()
     db.refresh(new_user)
 
@@ -255,4 +266,36 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
+    }
+
+@router.get("/profile", response_model=ProfileResponse)
+def get_profile(current_user: User = Depends(get_current_user),db: Session = Depends(get_db)):
+    profile = (db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first())
+
+    if not profile:
+        raise HTTPException(status_code=404,detail="Profile not found")
+
+    return {"user_id":profile.user_id,"name":profile.name,"profile_image":profile.profile_image,
+            "email":current_user.email,"created_at":profile.created_at,"updated_at":profile.updated_at,}
+
+@router.put("/profile", response_model=ProfileResponse)
+def update_profile(data: ProfileUpdateRequest,current_user: User = Depends(get_current_user),db: Session = Depends(get_db),):
+    profile = (db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first())
+
+    if not profile:
+        raise HTTPException(status_code=404,detail="Profile not found",)
+
+    profile.name = data.name
+    profile.profile_image = data.profile_image
+
+    db.commit()
+    db.refresh(profile)
+
+    return {
+        "user_id": profile.user_id,
+        "name": profile.name,
+        "profile_image": profile.profile_image,
+        "email": current_user.email,
+        "created_at": profile.created_at,
+        "updated_at": profile.updated_at,
     }
