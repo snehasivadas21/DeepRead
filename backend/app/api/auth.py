@@ -3,26 +3,25 @@ from sqlalchemy.orm import Session
 
 from datetime import datetime,timedelta
 
-from app.db.session import SessionLocal
+from app.db.dependencies import get_db
 
 from app.models.users import User
 from app.models.email_verification import EmailVerification
+from app.models.refresh_token import RefreshToken
 
-from app.schemas.auth import RegisterRequest, RegisterResponse
+from app.schemas.auth import (RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserResponse, 
+                              RefreshRequest, RefreshResponse)
 
-from app.services.auth import hash_password
+from app.services.auth import hash_password, verify_password, hash_refresh_token
 from app.services.email_verification import (generate_verication_token,hash_verification_token)
 
-from app.worker.tasks import send_verification_email
+from app.worker.tasks import send_verification_email_task
+
+from app.core.config import settings
+from app.core.security import create_access_token,create_refresh_token, get_current_user, verify_refresh_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 def register_user(user_data: RegisterRequest, db: Session = Depends(get_db),):
@@ -53,7 +52,7 @@ def register_user(user_data: RegisterRequest, db: Session = Depends(get_db),):
 
     verification_url = ( f"http://localhost:8000/auth/verify-email?token={verification_token}")
 
-    send_verification_email.delay(recipient=new_user.email,verification_url=verification_url,)
+    send_verification_email_task.delay(recipient=new_user.email,verification_url=verification_url,)
 
     return new_user
     
@@ -73,7 +72,7 @@ def verify_email(token: str, db:Session = Depends(get_db)):
     if verification.expires_at < datetime.utcnow():
             raise HTTPException(status_code=400,detail="Verification token has expired")
 
-    user = (db.query(User).filter(User.id == verification.user.id).first())
+    user = (db.query(User).filter(User.id == verification.user_id).first())
 
     if not user:
         raise HTTPException(status_code=404,detail="User not found")
@@ -84,3 +83,76 @@ def verify_email(token: str, db:Session = Depends(get_db)):
     db.commit()
 
     return {"message":"Email verified successfully"}
+
+@router.post("/login", response_model=LoginResponse)
+def login_user(user_data: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_data.email).first()
+
+    if not user or not verify_password(user_data.password,user.password_hash):
+        raise HTTPException(status_code=401,detail="Invalid email or password",)
+
+    if not user.is_active:
+        raise HTTPException(status_code=403,detail="Account is inactive")
+
+    if not user.email_verified:
+        raise HTTPException(status_code=403,detail="Please verify your email first")
+
+    user.last_login_at = datetime.utcnow()
+
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+
+    refresh_token_record = RefreshToken(user_id=user.id,token_hash=hash_refresh_token(refresh_token),
+                                        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+                                        created_at=datetime.utcnow(),)
+    db.add(refresh_token_record)
+    db.commit()
+
+    return {"access_token": access_token,"refresh_token": refresh_token,"token_type": "bearer"}
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@router.post("/refresh", response_model=RefreshResponse)
+def refresh_access_token(refresh_data: RefreshRequest, db: Session = Depends(get_db)):
+    user_id = verify_refresh_token(refresh_data.refresh_token)
+
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403,detail="Account is inactive")
+
+    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),RefreshToken.revoked_at.is_(None),).first())
+
+    if not stored_token:
+        raise HTTPException(status_code=401,detail="Invalid or revoked refresh token",)
+
+    if stored_token.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=401,detail="Refresh token has expired",)
+
+    stored_token.revoked_at = datetime.utcnow()
+
+    access_token = create_access_token(user.id)
+    new_refresh_token = create_refresh_token(user.id)
+
+    new_refresh_token_record = RefreshToken(user_id=user.id,token_hash=hash_refresh_token(new_refresh_token),expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),created_at=datetime.utcnow(),)
+
+    db.add(new_refresh_token_record)
+    db.commit()
+
+    return {"access_token": access_token,"refresh_token": new_refresh_token,"token_type": "bearer",}
+
+@router.post("/logout")
+def logout_user(refresh_data: RefreshRequest,db: Session = Depends(get_db)):
+    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),RefreshToken.revoked_at.is_(None),).first())
+
+    if not stored_token:
+        raise HTTPException(status_code=401,detail="Invalid or already refresh token")
+    stored_token.revoked_at = datetime.utcnow()
+    db.commit()
+
+    return {"message":"Logged out successfully"}
