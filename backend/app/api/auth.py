@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
+
 from sqlalchemy.orm import Session
 
 from datetime import datetime,timedelta
@@ -19,6 +21,7 @@ from app.services.email_verification import (generate_verication_token,hash_veri
 from app.worker.tasks import send_verification_email_task, send_password_reset_email_task
 
 from app.core.config import settings
+from app.core.oauth import oauth
 
 from app.core.security import create_access_token,create_refresh_token, get_current_user, verify_refresh_token
 
@@ -207,3 +210,49 @@ def reset_password(data: ResetPasswordRequest,db: Session = Depends(get_db)):
     db.commit()
 
     return {"message":"Password reset successfull"}
+
+@router.get("/google/login")
+async def google_login(request: Request):
+    redirect_uri = settings.GOOGLE_REDIRECT_URI
+
+    return await oauth.google.authorize_redirect(request,redirect_uri)
+
+@router.get("/google/callback")
+async def google_callback(request: Request, db: Session = Depends(get_db)):
+    token = await oauth.google.authorize_access_token(request)
+
+    user_info = token.get("userinfo")
+
+    if not user_info:
+        raise HTTPException(status_code=400,detail="Could not retrieve Google user information",)
+
+    google_id = user_info.get("sub")
+    email = user_info.get("email")
+    name = user_info.get("name")
+
+    user = (db.query(User).filter(User.email == email).first())
+
+    if user:
+        access_token = create_access_token(user.id)
+        refresh_token = create_refresh_token(user.id)
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+        }
+
+    new_user = User(email=email,user_name=name,password_hash=None,is_active=True,email_verified=True,)
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    access_token = create_access_token(new_user.id)
+    refresh_token = create_refresh_token(new_user.id)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
