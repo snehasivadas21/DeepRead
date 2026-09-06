@@ -8,16 +8,18 @@ from app.db.dependencies import get_db
 from app.models.users import User
 from app.models.email_verification import EmailVerification
 from app.models.refresh_token import RefreshToken
+from app.models.password_reset_token import PasswordResetToken
 
 from app.schemas.auth import (RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserResponse, 
-                              RefreshRequest, RefreshResponse)
+                              RefreshRequest, RefreshResponse, ResetPasswordRequest)
 
-from app.services.auth import hash_password, verify_password, hash_refresh_token
+from app.services.auth import hash_password, verify_password, hash_refresh_token, generate_password_reset_token, hash_password_reset_token
 from app.services.email_verification import (generate_verication_token,hash_verification_token)
 
-from app.worker.tasks import send_verification_email_task
+from app.worker.tasks import send_verification_email_task, send_password_reset_email_task
 
 from app.core.config import settings
+
 from app.core.security import create_access_token,create_refresh_token, get_current_user, verify_refresh_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -126,7 +128,8 @@ def refresh_access_token(refresh_data: RefreshRequest, db: Session = Depends(get
     if not user.is_active:
         raise HTTPException(status_code=403,detail="Account is inactive")
 
-    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),RefreshToken.revoked_at.is_(None),).first())
+    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),
+                                                  RefreshToken.revoked_at.is_(None),).first())
 
     if not stored_token:
         raise HTTPException(status_code=401,detail="Invalid or revoked refresh token",)
@@ -139,7 +142,9 @@ def refresh_access_token(refresh_data: RefreshRequest, db: Session = Depends(get
     access_token = create_access_token(user.id)
     new_refresh_token = create_refresh_token(user.id)
 
-    new_refresh_token_record = RefreshToken(user_id=user.id,token_hash=hash_refresh_token(new_refresh_token),expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),created_at=datetime.utcnow(),)
+    new_refresh_token_record = RefreshToken(user_id=user.id,token_hash=hash_refresh_token(new_refresh_token),
+                                            expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+                                            created_at=datetime.utcnow(),)
 
     db.add(new_refresh_token_record)
     db.commit()
@@ -148,7 +153,8 @@ def refresh_access_token(refresh_data: RefreshRequest, db: Session = Depends(get
 
 @router.post("/logout")
 def logout_user(refresh_data: RefreshRequest,db: Session = Depends(get_db)):
-    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),RefreshToken.revoked_at.is_(None),).first())
+    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),
+                                                  RefreshToken.revoked_at.is_(None),).first())
 
     if not stored_token:
         raise HTTPException(status_code=401,detail="Invalid or already refresh token")
@@ -156,3 +162,48 @@ def logout_user(refresh_data: RefreshRequest,db: Session = Depends(get_db)):
     db.commit()
 
     return {"message":"Logged out successfully"}
+
+@router.post("/forgot-password")
+def forgot_password(email: str,db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+
+    if user:
+        reset_token = generate_password_reset_token()
+
+        reset_record = PasswordResetToken(user_id=user.id,
+                                          token_hash=hash_password_reset_token(reset_token),
+                                          expires_at=datetime.utcnow() + timedelta(minutes=30),
+                                          created_at=datetime.utcnow())
+        db.add(reset_record)
+        db.commit()
+
+        reset_url = (f"http://localhost:8000/auth/reset-password?token={reset_token}")
+
+        send_password_reset_email_task.delay(recipient=user.email,reset_url=reset_url,)
+
+    return {"message":"If the email is registered,a password reset link has been sent"}    
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest,db: Session = Depends(get_db)):
+    token_hash = hash_password_reset_token(data.token)
+
+    reset_record = (db.query(PasswordResetToken).filter(PasswordResetToken.token_hash == token_hash,PasswordResetToken.used_at.is_(None),).first())
+
+    if not reset_record:
+        raise HTTPException(status_code=400,detail="Invalid or already used reset token")
+
+    if reset_record.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400,detail="Reset token has expired")
+
+    user = (db.query(User).filter(User.id == reset_record.user_id).first())
+
+    if not user:
+        raise HTTPException(status_code=404,detail="User not found")
+
+    user.password_hash = hash_password(data.new_password)
+
+    reset_record.used_at = datetime.utcnow()
+
+    db.commit()
+
+    return {"message":"Password reset successfull"}
