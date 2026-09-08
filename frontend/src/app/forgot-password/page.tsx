@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/services/api";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -17,10 +17,12 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const data = await apiRequest("/auth/forgot-password", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      });
+      const data = await apiRequest(
+        `/auth/forgot-password?email=${encodeURIComponent(email)}`,
+        {
+          method: "POST",
+        }
+      );
 
       setMessage(data.message || "Password reset email sent.");
     } catch (err) {

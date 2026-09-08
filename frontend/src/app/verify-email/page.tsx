@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiRequest } from "@/services/api";
+import { useRouter } from "next/navigation";
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
@@ -10,6 +11,8 @@ export default function VerifyEmailPage() {
 
   const [message, setMessage] = useState("Verifying your email...");
   const [error, setError] = useState("");
+
+  const router = useRouter();
 
   useEffect(() => {
     if (!token) {
@@ -25,6 +28,10 @@ export default function VerifyEmailPage() {
         );
 
         setMessage(data.message || "Email verified successfully!");
+
+        setTimeout(()=>{
+          router.push("/login");
+        },1500)
       } catch (err) {
         setMessage("");
         setError(

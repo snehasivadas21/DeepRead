@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { apiRequest } from "@/services/api";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,6 +10,8 @@ export default function LoginPage() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const router = useRouter();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,6 +31,9 @@ export default function LoginPage() {
       console.log("Login response:", data);
 
       setMessage("Login successful!");
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 500);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Login failed"
@@ -60,6 +66,15 @@ export default function LoginPage() {
             className="w-full rounded border p-3"
             required
           />
+
+          <div className="text-right">
+            <a
+              href="/forgot-password"
+              className="text-sm text-gray-600 hover:text-black"
+            >
+              Forgot password?
+            </a>
+          </div>
 
           <button
             type="submit"

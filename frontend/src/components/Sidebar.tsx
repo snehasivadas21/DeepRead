@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/services/api";
 
 const navigation = [
   {

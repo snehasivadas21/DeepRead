@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/services/api";
+import Sidebar from "@/components/Sidebar";
 
 type Workspace = {
   id: number;
@@ -61,70 +62,13 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleLogout() {
-    try {
-      await apiRequest("/auth/logout", {
-        method: "POST",
-      });
-    } catch {
-      // Even if the backend request fails,
-      // send the user back to login.
-    }
-
-    router.push("/login");
-  }
-
   function openWorkspace(id: number) {
     router.push(`/workspace/${id}`);
   }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-
-      {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r bg-white">
-
-        {/* Logo */}
-        <div className="border-b px-6 py-5">
-          <h1 className="text-2xl font-bold">
-            DeepRead
-          </h1>
-
-          <p className="mt-1 text-sm text-gray-500">
-            AI Research Platform
-          </p>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 space-y-2 p-4">
-
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="w-full rounded-lg bg-gray-100 px-4 py-3 text-left font-medium"
-          >
-            Dashboard
-          </button>
-
-          <button
-            onClick={() => router.push("/profile")}
-            className="w-full rounded-lg px-4 py-3 text-left text-gray-600 hover:bg-gray-100"
-          >
-            Profile
-          </button>
-
-        </nav>
-
-        {/* Logout */}
-        <div className="border-t p-4">
-          <button
-            onClick={handleLogout}
-            className="w-full rounded-lg px-4 py-3 text-left text-red-600 hover:bg-red-50"
-          >
-            Logout
-          </button>
-        </div>
-      </aside>
-
+      <Sidebar/>
       {/* Main content */}
       <main className="flex-1">
 

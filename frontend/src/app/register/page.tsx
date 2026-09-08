@@ -27,6 +27,10 @@ export default function RegisterPage() {
         }),
       });
 
+      setEmail("");
+      setUserName("");
+      setPassword("");
+
       setMessage(
         `Registration successful. Welcome, ${data.user_name}!`
       );
