@@ -24,15 +24,15 @@ services:
       - "6379:6379"
 
   fastapi:
-    build: .
+    build: ./backend
     container_name: deepread-fastapi
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./backend:/app
     env_file:
-      - .env
+      - ./backend/.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,18 +40,35 @@ services:
         condition: service_started
 
   celery:
-    build: .
+    build: ./backend
     container_name: deepread-celery
     command: celery -A app.worker.celery_app worker --loglevel=info
     volumes:
-      - .:/app
+      - ./backend:/app
     env_file:
-      - .env
+      - ./backend/.env
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
 
+  frontend:
+    build: ./frontend
+    container_name: deepread-frontend
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - fastapi      
+
 volumes:
   postgres_data:
+    external: true
+    name: backend_postgres_data
