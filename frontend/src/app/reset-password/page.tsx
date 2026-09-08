@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/services/api";
+import { useRouter } from "next/navigation";
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -14,6 +15,8 @@ export default function ResetPasswordPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,15 +37,13 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const data = await apiRequest(
-        `/auth/reset-password?token=${encodeURIComponent(token)}`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            new_password: password,
-          }),
-        }
-      );
+      const data = await apiRequest("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+          new_password: password,
+        }),
+      });
 
       setMessage(
         data.message || "Password reset successfully."
@@ -50,6 +51,10 @@ export default function ResetPasswordPage() {
 
       setPassword("");
       setConfirmPassword("");
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 500);
     } catch (err) {
       setError(
         err instanceof Error

@@ -59,7 +59,7 @@ def register_user(user_data: RegisterRequest, db: Session = Depends(get_db),):
     db.add(verification)
     db.commit()
 
-    verification_url = ( f"http://localhost:8000/auth/verify-email?token={verification_token}")
+    verification_url = ( f"http://localhost:3000/verify-email?token={verification_token}")
 
     send_verification_email_task.delay(recipient=new_user.email,verification_url=verification_url,)
 
@@ -220,7 +220,7 @@ def forgot_password(email: str,db: Session = Depends(get_db)):
         db.add(reset_record)
         db.commit()
 
-        reset_url = (f"http://localhost:8000/auth/reset-password?token={reset_token}")
+        reset_url = (f"http://localhost:3000/reset-password?token={reset_token}")
 
         send_password_reset_email_task.delay(recipient=user.email,reset_url=reset_url,)
 
@@ -310,8 +310,12 @@ def get_profile(current_user: User = Depends(get_current_user),db: Session = Dep
     if not profile:
         raise HTTPException(status_code=404,detail="Profile not found")
 
-    return {"user_id":profile.user_id,"name":profile.name,"profile_image":profile.profile_image,
-            "email":current_user.email,"created_at":profile.created_at,"updated_at":profile.updated_at,}
+    return {"user_id":profile.user_id,
+            "name":profile.name,
+            "profile_image":profile.profile_image,
+            "email":current_user.email,
+            "created_at":profile.created_at,
+            "updated_at":profile.updated_at,}
 
 @router.put("/profile", response_model=ProfileResponse)
 def update_profile(data: ProfileUpdateRequest,current_user: User = Depends(get_current_user),db: Session = Depends(get_db),):

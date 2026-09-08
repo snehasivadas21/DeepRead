@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/services/api";
 import {
   UserProfile,
   ProfileUpdateData,
