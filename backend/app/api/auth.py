@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from sqlalchemy.orm import Session
 
@@ -95,7 +94,7 @@ def verify_email(token: str, db:Session = Depends(get_db)):
     return {"message":"Email verified successfully"}
 
 @router.post("/login", response_model=LoginResponse)
-def login_user(user_data: LoginRequest, db: Session = Depends(get_db)):
+def login_user(user_data: LoginRequest,response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_data.email).first()
 
     if not user or not verify_password(user_data.password,user.password_hash):
@@ -112,21 +111,35 @@ def login_user(user_data: LoginRequest, db: Session = Depends(get_db)):
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
 
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,  
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
     refresh_token_record = RefreshToken(user_id=user.id,token_hash=hash_refresh_token(refresh_token),
                                         expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
                                         created_at=datetime.utcnow(),)
     db.add(refresh_token_record)
     db.commit()
 
-    return {"access_token": access_token,"refresh_token": refresh_token,"token_type": "bearer"}
+    return {"access_token": access_token,"refresh_token": "","token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 @router.post("/refresh", response_model=RefreshResponse)
-def refresh_access_token(refresh_data: RefreshRequest, db: Session = Depends(get_db)):
-    user_id = verify_refresh_token(refresh_data.refresh_token)
+def refresh_access_token(request: Request,response: Response, db: Session = Depends(get_db)):
+    refresh_token = request.cookies.get("refresh_token")
+
+    if not refresh_token:
+        raise HTTPException(status_code=401,detail="Refresh token not found")
+    
+    user_id = verify_refresh_token(refresh_token)
 
     user = db.query(User).filter(User.id == user_id).first()
 
@@ -136,7 +149,7 @@ def refresh_access_token(refresh_data: RefreshRequest, db: Session = Depends(get
     if not user.is_active:
         raise HTTPException(status_code=403,detail="Account is inactive")
 
-    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),
+    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_token),
                                                   RefreshToken.revoked_at.is_(None),).first())
 
     if not stored_token:
@@ -157,17 +170,39 @@ def refresh_access_token(refresh_data: RefreshRequest, db: Session = Depends(get
     db.add(new_refresh_token_record)
     db.commit()
 
-    return {"access_token": access_token,"refresh_token": new_refresh_token,"token_type": "bearer",}
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+    return {"access_token": access_token,"refresh_token": "","token_type": "bearer",}
 
 @router.post("/logout")
-def logout_user(refresh_data: RefreshRequest,db: Session = Depends(get_db)):
-    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_data.refresh_token),
+def logout_user(request: Request,response: Response,db: Session = Depends(get_db)):
+    refresh_token = request.cookies.get("refresh_token")
+
+    if not refresh_token:
+        raise HTTPException(status_code=401,detail="Refresh token not found")
+    
+    stored_token = (db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(refresh_token),
                                                   RefreshToken.revoked_at.is_(None),).first())
 
     if not stored_token:
         raise HTTPException(status_code=401,detail="Invalid or already refresh token")
+    
     stored_token.revoked_at = datetime.utcnow()
     db.commit()
+
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=False,
+        samesite="lax",
+    )
 
     return {"message":"Logged out successfully"}
 
