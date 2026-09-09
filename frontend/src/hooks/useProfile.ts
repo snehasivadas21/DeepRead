@@ -1,14 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  getProfile,
-  updateProfile,
-} from "@/services/profile.service";
-import {
-  UserProfile,
-  ProfileUpdateData,
-} from "@/types/profile";
+import {getProfile,updateProfile,} from "@/services/profile.service";
+import {UserProfile,ProfileUpdateData,} from "@/types/profile";
+import { useAuth } from "@/context/AuthContext";
 
 export function useProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -16,12 +11,14 @@ export function useProfile() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
 
+  const { accessToken } = useAuth();
+
   const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const data = await getProfile();
+      const data = await getProfile(accessToken);
 
       setProfile(data);
     } catch (err) {
@@ -42,7 +39,7 @@ export function useProfile() {
       setUpdating(true);
       setError("");
 
-      const updatedProfile = await updateProfile(data);
+      const updatedProfile = await updateProfile(data,accessToken);
 
       setProfile(updatedProfile);
 

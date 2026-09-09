@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { apiRequest } from "@/services/api";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,6 +13,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   const router = useRouter();
+
+  const { setAccessToken } = useAuth();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,8 +30,7 @@ export default function LoginPage() {
           password,
         }),
       });
-
-      console.log("Login response:", data);
+      setAccessToken(data.access_token)
 
       setMessage("Login successful!");
       setTimeout(() => {
@@ -81,6 +83,23 @@ export default function LoginPage() {
             className="w-full rounded bg-black p-3 text-white"
           >
             Login
+          </button>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-sm text-gray-400">OR</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href =
+                "http://localhost:8000/auth/google/login";
+            }}
+            className="w-full rounded-lg border px-4 py-3 font-medium hover:bg-gray-50"
+          >
+            Continue with Google
           </button>
         </form>
 
