@@ -4,6 +4,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useSources } from "@/hooks/useSources";
+
+import SourceUpload from "@/components/source/SourceUpload";
+import SourceList from "@/components/source/SourceList";
 
 export default function WorkspacePage() {
   const params = useParams();
@@ -15,6 +19,15 @@ export default function WorkspacePage() {
     loading,
     error,
   } = useWorkspace(workspaceId);
+
+  const {
+    sources,
+    loading: sourcesLoading,
+    uploading,
+    error: sourcesError,
+    uploadFile,
+    removeSource,
+  } = useSources(workspaceId);
 
   if (loading) {
     return (
@@ -50,7 +63,7 @@ export default function WorkspacePage() {
     
     <main className="min-h-screen bg-gray-50 p-8">
       <div className="border-b px-6 py-6">
-        <Link href="/">
+        <Link href="/dashboard">
           <h1 className="text-2xl font-bold">
             DeepRead
           </h1>
@@ -72,13 +85,39 @@ export default function WorkspacePage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <section className="rounded-xl border bg-white p-6">
-          <h2 className="text-xl font-semibold">
-            Sources
-          </h2>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold">
+              Sources
+            </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
-            Upload and manage your research documents.
-          </p>
+            <p className="mt-2 text-sm text-gray-500">
+              Upload and manage your research documents.
+            </p>
+          </div>
+
+          <SourceUpload
+            uploading={uploading}
+            onUpload={async (file) => {
+              await uploadFile(file);
+            }}
+          />
+
+          <div className="mt-6">
+            {sourcesLoading ? (
+              <p className="text-sm text-gray-500">
+                Loading sources...
+              </p>
+            ) : sourcesError ? (
+              <p className="text-sm text-red-600">
+                {sourcesError}
+              </p>
+            ) : (
+              <SourceList
+                sources={sources}
+                onDelete={removeSource}
+              />
+            )}
+          </div>
         </section>
 
         <section className="rounded-xl border bg-white p-6">

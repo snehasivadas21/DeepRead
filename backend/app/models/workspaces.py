@@ -17,4 +17,4 @@ class Workspace(Base):
 
     user: Mapped["User"] = relationship("User",back_populates="workspaces")
 
-    # sources: Mapped[list["Source"]] = relationship("Source",back_populates="workspace",cascade="all, delete-orphan",)
+    sources: Mapped[list["Source"]] = relationship("Source",back_populates="workspace",cascade="all, delete-orphan",)

@@ -5,11 +5,17 @@ export async function apiRequest(
   options: RequestInit = {},
   accessToken?: string | null,
 ) {
+  const isFormData = options.body instanceof FormData
+
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData
+        ?{}
+        : {
+            "Content-Type": "application/json",
+          }),
 
       ...(accessToken
         ? {

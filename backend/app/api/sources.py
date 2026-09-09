@@ -1,190 +1,187 @@
-# from fastapi import APIRouter, Depends, HTTPException, File
-# from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from sqlalchemy.orm import Session
 
-# from app.core.security import get_current_user
-# from app.db.dependencies import get_db
-# from app.models.sources import Source
-# from app.models.users import User
-# from app.models.workspaces import Workspace
-# from app.schemas.source import SourceResponse
+from app.core.security import get_current_user
+from app.db.dependencies import get_db
+from app.models.sources import Source
+from app.models.users import User
+from app.models.workspaces import Workspace
+from app.schemas.source import SourceCreate, SourceResponse
 
-# from pathlib import Path
-# from uuid import uuid4
-
-
-# router = APIRouter(
-#     prefix="/workspaces/{workspace_id}/sources",
-#     tags=["Sources"],
-# )
-
-# def get_user_workspace(
-#     workspace_id: int,
-#     current_user: User,
-#     db: Session,
-# ):
-#     workspace = (
-#         db.query(Workspace)
-#         .filter(
-#             Workspace.id == workspace_id,
-#             Workspace.user_id == current_user.id,
-#         )
-#         .first()
-#     )
-
-#     if not workspace:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="Workspace not found",
-#         )
-
-#     return workspace
+from pathlib import Path
+from uuid import uuid4
 
 
-# @router.post(
-#     "/",
-#     response_model=SourceResponse,
-#     status_code=201,
-# )
-# def create_source(
-#     workspace_id: int,
-#     data: SourceCreate,
-#     current_user: User = Depends(get_current_user),
-#     db: Session = Depends(get_db),
-# ):
-#     get_user_workspace(workspace_id, current_user, db)
+router = APIRouter(prefix="/workspaces/{workspace_id}/sources",tags=["Sources"],)
 
-#     source = Source(
-#         workspace_id=workspace_id,
-#         title=data.title,
-#         source_type=data.source_type,
-#         file_url=data.file_url,
-#     )
+def get_user_workspace(
+    workspace_id: int,
+    current_user: User,
+    db: Session,
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(
+            Workspace.id == workspace_id,
+            Workspace.user_id == current_user.id,
+        )
+        .first()
+    )
 
-#     db.add(source)
-#     db.commit()
-#     db.refresh(source)
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found",
+        )
 
-#     return source
+    return workspace
 
 
-# @router.get(
-#     "/",
-#     response_model=list[SourceResponse],
-# )
-# def get_sources(
-#     workspace_id: int,
-#     current_user: User = Depends(get_current_user),
-#     db: Session = Depends(get_db),
-# ):
-#     get_user_workspace(workspace_id, current_user, db)
+@router.post(
+    "/",
+    response_model=SourceResponse,
+    status_code=201,
+)
+def create_source(
+    workspace_id: int,
+    data: SourceCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_user_workspace(workspace_id, current_user, db)
 
-#     sources = (
-#         db.query(Source)
-#         .filter(Source.workspace_id == workspace_id)
-#         .order_by(Source.created_at.desc())
-#         .all()
-#     )
+    source = Source(
+        workspace_id=workspace_id,
+        title=data.title,
+        source_type=data.source_type,
+        file_url=data.file_url,
+    )
 
-#     return sources
+    db.add(source)
+    db.commit()
+    db.refresh(source)
+
+    return source
 
 
-# @router.get(
-#     "/{source_id}",
-#     response_model=SourceResponse,
-# )
-# def get_source(
-#     workspace_id: int,
-#     source_id: int,
-#     current_user: User = Depends(get_current_user),
-#     db: Session = Depends(get_db),
-# ):
-#     get_user_workspace(workspace_id, current_user, db)
+@router.get(
+    "/",
+    response_model=list[SourceResponse],
+)
+def get_sources(
+    workspace_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_user_workspace(workspace_id, current_user, db)
 
-#     source = (
-#         db.query(Source)
-#         .filter(
-#             Source.id == source_id,
-#             Source.workspace_id == workspace_id,
-#         )
-#         .first()
-#     )
+    sources = (
+        db.query(Source)
+        .filter(Source.workspace_id == workspace_id)
+        .order_by(Source.created_at.desc())
+        .all()
+    )
 
-#     if not source:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="Source not found",
-#         )
+    return sources
 
-#     return source
 
-# @router.post(
-#     "/upload",
-#     response_model=SourceResponse,
-#     status_code=201,
-# )
-# async def upload_source(
-#     workspace_id: int,
-#     file: UploadFile = File(...),
-#     current_user: User = Depends(get_current_user),
-#     db: Session = Depends(get_db),
-# ):
-#     get_user_workspace(workspace_id, current_user, db)
+@router.get(
+    "/{source_id}",
+    response_model=SourceResponse,
+)
+def get_source(
+    workspace_id: int,
+    source_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_user_workspace(workspace_id, current_user, db)
 
-#     if file.content_type != "application/pdf":
-#         raise HTTPException(
-#             status_code=400,
-#             detail="Only PDF files are allowed",
-#         )
+    source = (
+        db.query(Source)
+        .filter(
+            Source.id == source_id,
+            Source.workspace_id == workspace_id,
+        )
+        .first()
+    )
 
-#     upload_dir = Path("uploads") / "workspaces" / str(workspace_id)
-#     upload_dir.mkdir(parents=True, exist_ok=True)
+    if not source:
+        raise HTTPException(
+            status_code=404,
+            detail="Source not found",
+        )
 
-#     file_name = f"{uuid4()}.pdf"
-#     file_path = upload_dir / file_name
+    return source
 
-#     with file_path.open("wb") as buffer:
-#         while chunk := await file.read(1024 * 1024):
-#             buffer.write(chunk)
+@router.post(
+    "/upload",
+    response_model=SourceResponse,
+    status_code=201,
+)
+async def upload_source(
+    workspace_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_user_workspace(workspace_id, current_user, db)
 
-#     source = Source(
-#         workspace_id=workspace_id,
-#         title=file.filename or "Untitled PDF",
-#         source_type="pdf",
-#         file_url=str(file_path),
-#         status="uploaded",
-#     )
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are allowed",
+        )
 
-#     db.add(source)
-#     db.commit()
-#     db.refresh(source)
+    upload_dir = Path("uploads") / "workspaces" / str(workspace_id)
+    upload_dir.mkdir(parents=True, exist_ok=True)
 
-#     return source
+    file_name = f"{uuid4()}.pdf"
+    file_path = upload_dir / file_name
 
-# @router.delete("/{source_id}")
-# def delete_source(
-#     workspace_id: int,
-#     source_id: int,
-#     current_user: User = Depends(get_current_user),
-#     db: Session = Depends(get_db),
-# ):
-#     get_user_workspace(workspace_id, current_user, db)
+    with file_path.open("wb") as buffer:
+        while chunk := await file.read(1024 * 1024):
+            buffer.write(chunk)
 
-#     source = (
-#         db.query(Source)
-#         .filter(
-#             Source.id == source_id,
-#             Source.workspace_id == workspace_id,
-#         )
-#         .first()
-#     )
+    source = Source(
+        workspace_id=workspace_id,
+        title=file.filename or "Untitled PDF",
+        source_type="pdf",
+        file_url=str(file_path),
+        status="uploaded",
+    )
 
-#     if not source:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="Source not found",
-#         )
+    db.add(source)
+    db.commit()
+    db.refresh(source)
 
-#     db.delete(source)
-#     db.commit()
+    return source
 
-#     return {"message": "Source deleted successfully"}
+@router.delete("/{source_id}")
+def delete_source(
+    workspace_id: int,
+    source_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_user_workspace(workspace_id, current_user, db)
+
+    source = (
+        db.query(Source)
+        .filter(
+            Source.id == source_id,
+            Source.workspace_id == workspace_id,
+        )
+        .first()
+    )
+
+    if not source:
+        raise HTTPException(
+            status_code=404,
+            detail="Source not found",
+        )
+
+    db.delete(source)
+    db.commit()
+
+    return {"message": "Source deleted successfully"}
