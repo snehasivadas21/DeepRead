@@ -2,6 +2,10 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+class SourceCreate(BaseModel):
+    title: str
+    source_type: str
+    file_url: str | None = None
 
 class SourceResponse(BaseModel):
     id: int
