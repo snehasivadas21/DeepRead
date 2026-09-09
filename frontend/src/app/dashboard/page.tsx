@@ -162,60 +162,6 @@ export default function DashboardPage() {
               />
             )}
           </div>
-
-          {/* Quick Actions */}
-          <div className="mt-10">
-            <h3 className="mb-4 text-lg font-semibold">
-              Quick Actions
-            </h3>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <button
-                onClick={handleCreate}
-                className="rounded-xl border bg-white p-5 text-left hover:shadow-sm"
-              >
-                <div className="mb-3 text-2xl">📁</div>
-
-                <h4 className="font-medium">
-                  New Workspace
-                </h4>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Start a new research project.
-                </p>
-              </button>
-
-              <button
-                onClick={() => router.push("/profile")}
-                className="rounded-xl border bg-white p-5 text-left hover:shadow-sm"
-              >
-                <div className="mb-3 text-2xl">👤</div>
-
-                <h4 className="font-medium">
-                  Your Profile
-                </h4>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Manage your account information.
-                </p>
-              </button>
-
-              <button
-                onClick={() => router.push("/research")}
-                className="rounded-xl border bg-white p-5 text-left hover:shadow-sm"
-              >
-                <div className="mb-3 text-2xl">🔬</div>
-
-                <h4 className="font-medium">
-                  Research
-                </h4>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Explore your research.
-                </p>
-              </button>
-            </div>
-          </div>
         </section>
       </main>
 

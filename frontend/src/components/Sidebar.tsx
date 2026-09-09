@@ -43,7 +43,7 @@ export default function Sidebar() {
 
       {/* Logo */}
       <div className="border-b px-6 py-6">
-        <Link href="/dashboard">
+        <Link href="/">
           <h1 className="text-2xl font-bold">
             DeepRead
           </h1>

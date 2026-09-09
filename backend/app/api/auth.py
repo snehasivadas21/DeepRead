@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 
@@ -258,50 +259,63 @@ async def google_login(request: Request):
     return await oauth.google.authorize_redirect(request,redirect_uri)
 
 @router.get("/google/callback")
-async def google_callback(request: Request, db: Session = Depends(get_db)):
+async def google_callback(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     token = await oauth.google.authorize_access_token(request)
 
     user_info = token.get("userinfo")
 
     if not user_info:
-        raise HTTPException(status_code=400,detail="Could not retrieve Google user information",)
+        raise HTTPException(
+            status_code=400,
+            detail="Could not retrieve Google user information",
+        )
 
-    google_id = user_info.get("sub")
     email = user_info.get("email")
     name = user_info.get("name")
 
-    user = (db.query(User).filter(User.email == email).first())
+    user = db.query(User).filter(User.email == email).first()
 
-    if user:
-        access_token = create_access_token(user.id)
-        refresh_token = create_refresh_token(user.id)
+    if not user:
+        user = User(
+            email=email,
+            user_name=name,
+            password_hash=None,
+            is_active=True,
+            email_verified=True,
+        )
 
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-        }
+        db.add(user)
+        db.flush()
 
-    new_user = User(email=email,user_name=name,password_hash=None,is_active=True,email_verified=True,)
+        profile = UserProfile(
+            user_id=user.id,
+            name=name,
+            profile_image=user_info.get("picture"),
+        )
 
-    db.add(new_user)
-    db.flush()
+        db.add(profile)
+        db.commit()
+        db.refresh(user)
 
-    profile = UserProfile(user_id=new_user.id,name=name,profile_image=user_info.get("picture"))
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
 
-    db.add(profile)
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
 
-    db.commit()
-    db.refresh(new_user)
-
-    access_token = create_access_token(new_user.id)
-    refresh_token = create_refresh_token(new_user.id)
-
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+    return RedirectResponse(
+        url=f"http://localhost:3000/google-callback?access_token={access_token}"
+    )
 
 @router.get("/profile", response_model=ProfileResponse)
 def get_profile(current_user: User = Depends(get_current_user),db: Session = Depends(get_db)):

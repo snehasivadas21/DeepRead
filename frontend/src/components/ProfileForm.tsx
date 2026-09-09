@@ -1,10 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import {
-  ProfileUpdateData,
-  UserProfile,
-} from "@/types/profile";
+import {ProfileUpdateData,UserProfile,} from "@/types/profile";
 
 interface ProfileFormProps {
   profile: UserProfile;

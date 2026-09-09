@@ -2,30 +2,25 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  createWorkspace,
-  getWorkspaces,
-  updateWorkspace,
-  deleteWorkspace,
-} from "@/services/workspace.service";
+import {createWorkspace,getWorkspaces,updateWorkspace,deleteWorkspace,} from "@/services/workspace.service";
 
-import {
-  Workspace,
-  WorkspaceCreateData,
-  WorkspaceUpdateData,
-} from "@/types/workspace";
+import {Workspace,WorkspaceCreateData,WorkspaceUpdateData,} from "@/types/workspace";
+
+import { useAuth } from "@/context/AuthContext";
 
 export function useWorkspaces() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const {accessToken} = useAuth();
+
   const fetchWorkspaces = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const data = await getWorkspaces();
+      const data = await getWorkspaces(accessToken);
       setWorkspaces(data);
     } catch (err) {
       setError(
@@ -39,7 +34,7 @@ export function useWorkspaces() {
   }, []);
 
   const addWorkspace = async (data: WorkspaceCreateData) => {
-    const newWorkspace = await createWorkspace(data);
+    const newWorkspace = await createWorkspace(data,accessToken);
 
     setWorkspaces((current) => [
       newWorkspace,
@@ -55,7 +50,8 @@ export function useWorkspaces() {
   ) => {
     const updatedWorkspace = await updateWorkspace(
       workspaceId,
-      data
+      data,
+      accessToken
     );
 
     setWorkspaces((current) =>
@@ -70,7 +66,7 @@ export function useWorkspaces() {
   };
 
   const removeWorkspace = async (workspaceId: number) => {
-    await deleteWorkspace(workspaceId);
+    await deleteWorkspace(workspaceId,accessToken);
 
     setWorkspaces((current) =>
       current.filter(
