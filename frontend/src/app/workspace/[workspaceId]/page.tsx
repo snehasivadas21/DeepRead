@@ -61,28 +61,30 @@ export default function WorkspacePage() {
 
   return (
     
-    <main className="min-h-screen bg-gray-50 p-8">
-      <div className="border-b px-6 py-6">
-        <Link href="/dashboard">
-          <h1 className="text-2xl font-bold">
-            DeepRead
-          </h1>
+    <main className="min-h-screen bg-gray-50">
+      <header className="border-b bg-white px-6 py-4">
+        <div className="flex items-center gap-4">
+          {/* Logo */}
+          <Link href="/dashboard" className="shrink-0">
+            <h1 className="text-xl font-bold leading-tight">DeepRead</h1>
+            <p className="text-xs text-gray-500">AI Research Platform</p>
+          </Link>
 
-          <p className="mt-1 text-xs text-gray-500">
-            AI Research Platform
-          </p>
-        </Link>
-      </div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold">
-          {workspace.name}
-        </h1>
+          {/* Divider */}
+          <span className="h-8 w-px bg-gray-200" />
 
-        <p className="mt-2 text-gray-600">
-          {workspace.description || "No description"}
-        </p>
-      </div>
-
+          {/* Workspace info */}
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-semibold leading-tight">
+              {workspace.name}
+            </h2>
+            <p className="truncate text-xs text-gray-500">
+              {workspace.description || "No description"}
+            </p>
+          </div>
+        </div>
+      </header>
+          
       <div className="grid gap-6 md:grid-cols-2">
         <section className="rounded-xl border bg-white p-6">
           <div className="mb-6">

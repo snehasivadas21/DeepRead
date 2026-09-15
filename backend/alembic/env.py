@@ -14,6 +14,9 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.user_profile import UserProfile
 from app.models.workspaces import Workspace
 from app.models.sources import Source
+from app.models.source_pages import SourcePage
+from app.models.document_chunks import DocumentChunk
+from app.models.chunk_embeddings import ChunkEmbedding
 
 from app.db.session import settings
 
