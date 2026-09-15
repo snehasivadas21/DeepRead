@@ -59,3 +59,9 @@ class Source(Base):
         "Workspace",
         back_populates="sources",
     )
+
+    pages: Mapped[list["SourcePage"]] = relationship(
+        "SourcePage",
+        back_populates="source",
+        cascade="all, delete-orphan",
+    )

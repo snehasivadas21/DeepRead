@@ -2,10 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
+
 from app.db.dependencies import get_db
+
 from app.models.sources import Source
 from app.models.users import User
 from app.models.workspaces import Workspace
+
+from app.worker.tasks import process_source
 from app.schemas.source import SourceCreate, SourceResponse
 
 from pathlib import Path
@@ -114,11 +118,7 @@ def get_source(
 
     return source
 
-@router.post(
-    "/upload",
-    response_model=SourceResponse,
-    status_code=201,
-)
+@router.post("/upload",response_model=SourceResponse,status_code=201,)
 async def upload_source(
     workspace_id: int,
     file: UploadFile = File(...),
@@ -128,10 +128,7 @@ async def upload_source(
     get_user_workspace(workspace_id, current_user, db)
 
     if file.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=400,
-            detail="Only PDF files are allowed",
-        )
+        raise HTTPException(status_code=400,detail="Only PDF files are allowed",)
 
     upload_dir = Path("uploads") / "workspaces" / str(workspace_id)
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -154,6 +151,8 @@ async def upload_source(
     db.add(source)
     db.commit()
     db.refresh(source)
+
+    process_source.delay(source.id)
 
     return source
 

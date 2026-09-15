@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { apiRequest } from "@/services/api";
+import Link from "next/link";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -98,6 +99,16 @@ export default function RegisterPage() {
           >
             Continue with Google
           </button>
+
+          <p className="text-center text-sm text-gray-600">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="font-medium text-black hover:underline"
+            >
+              Login
+            </Link>
+          </p>
         </form>
 
         {message && (

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { apiRequest } from "@/services/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -101,6 +102,16 @@ export default function LoginPage() {
           >
             Continue with Google
           </button>
+
+          <p className="text-center text-sm text-gray-600">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/register"
+              className="font-medium text-black hover:underline"
+            >
+              Register
+            </Link>
+          </p>
         </form>
 
         {message && (

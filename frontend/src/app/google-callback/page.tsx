@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function GoogleCallbackPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [error, setError] = useState("");
+
+  const { setAccessToken } = useAuth();
 
   useEffect(() => {
     const accessToken = searchParams.get("access_token");
@@ -17,7 +20,7 @@ export default function GoogleCallbackPage() {
       return;
     }
 
-    localStorage.setItem("access_token", accessToken);
+    setAccessToken(accessToken);
 
     router.replace("/dashboard");
   }, [searchParams, router]);
