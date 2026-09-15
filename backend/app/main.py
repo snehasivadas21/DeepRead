@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.workspaces import router as workspace_router
 from app.api.sources import router as source_router
+from app.api.search import router as search_router
 
 from starlette.middleware.sessions import SessionMiddleware
 from app.core.config import settings
@@ -26,4 +27,5 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(workspace_router)
 app.include_router(source_router)
+app.include_router(search_router)
 
