@@ -75,8 +75,10 @@ def process_source(source_id: int):
         source.status = "ready"
         db.commit()
 
+        embed_source_chunks.delay(source.id)
+
         return {
-            "status": "ready",
+            "status": "processing_embeddings",
             "source_id": source.id,
         }
 
@@ -129,6 +131,14 @@ def embed_source_chunks(source_id: int):
             embedded_count += 1
 
         db.commit()
+
+        source = db.query(Source).filter(
+            Source.id == source_id
+        ).first()
+
+        if source:
+            source.status = "ready"
+            db.commit()
 
         return {
             "status": "completed",

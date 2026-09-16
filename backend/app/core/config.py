@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
 
+    OPENROUTER_API_KEY: str
+    OPENROUTER_MODEL: str = "openrouter/free"
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+
     model_config = SettingsConfigDict(env_file=".env")
 
 
