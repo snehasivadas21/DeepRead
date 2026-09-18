@@ -9,6 +9,8 @@ import { useSources } from "@/hooks/useSources";
 import SourceUpload from "@/components/source/SourceUpload";
 import SourceList from "@/components/source/SourceList";
 
+import ChatPanel from "@/components/chat/chatpanel";
+
 export default function WorkspacePage() {
   const params = useParams();
 
@@ -123,13 +125,7 @@ export default function WorkspacePage() {
         </section>
 
         <section className="rounded-xl border bg-white p-6">
-          <h2 className="text-xl font-semibold">
-            AI Chat
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-500">
-            Ask questions about your research.
-          </p>
+          <ChatPanel workspaceId={workspaceId} />
         </section>
       </div>
     </main>

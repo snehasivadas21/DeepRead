@@ -17,6 +17,8 @@ from app.models.sources import Source
 from app.models.source_pages import SourcePage
 from app.models.document_chunks import DocumentChunk
 from app.models.chunk_embeddings import ChunkEmbedding
+from app.models.conversations import Conversation
+from app.models.messages import Message
 
 from app.db.session import settings
 
