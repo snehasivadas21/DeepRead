@@ -12,6 +12,9 @@ def rerank_chunks(
     top_k: int = 5,
 ) -> list[dict]:
 
+    if not results:
+        return []
+
     pairs = [
         (query, item["chunk"].text)
         for item in results
