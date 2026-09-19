@@ -99,6 +99,7 @@ def send_message(
         conversation_id=conversation.id,
         role="assistant",
         content=result["answer"],
+        citations=result["citations"],
     )
 
     db.add(assistant_message)

@@ -9,7 +9,7 @@ import { useSources } from "@/hooks/useSources";
 import SourceUpload from "@/components/source/SourceUpload";
 import SourceList from "@/components/source/SourceList";
 
-import ChatPanel from "@/components/chat/chatpanel";
+import ChatPanel from "@/components/chat/ChatPanel";
 
 export default function WorkspacePage() {
   const params = useParams();
