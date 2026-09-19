@@ -8,6 +8,7 @@ from app.db.dependencies import get_db
 from app.models.sources import Source
 from app.models.users import User
 from app.models.workspaces import Workspace
+from app.models.document_chunks import DocumentChunk
 
 from app.worker.tasks import process_source
 from app.schemas.source import SourceCreate, SourceResponse
@@ -184,3 +185,36 @@ def delete_source(
     db.commit()
 
     return {"message": "Source deleted successfully"}
+
+@router.get("/{source_id}/chunks/{chunk_id}")
+def get_source_chunk(
+    workspace_id: int,
+    source_id: int,
+    chunk_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_user_workspace(workspace_id, current_user, db)
+
+    chunk = (
+        db.query(DocumentChunk)
+        .filter(
+            DocumentChunk.id == chunk_id,
+            DocumentChunk.source_id == source_id,
+        )
+        .first()
+    )
+
+    if not chunk:
+        raise HTTPException(
+            status_code=404,
+            detail="Chunk not found",
+        )
+
+    return {
+        "source_id": chunk.source_id,
+        "source_name": chunk.source.title,
+        "page_number": chunk.page.page_number,
+        "chunk_id": chunk.id,
+        "text": chunk.text,
+    }

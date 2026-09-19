@@ -1,29 +1,34 @@
-def chunk_text(
-    text: str,
-    chunk_size: int = 800,
-    overlap: int = 100,
-) -> list[str]:
+def chunk_text(text: str,chunk_size: int = 800,overlap: int = 100,) -> list[str]:
     text = text.strip()
+
+    print("\n========== TEXT BEFORE CHUNKING ==========")
+    print(text[:3000])
+    print("==========================================\n")
 
     if not text:
         return []
 
+    paragraphs = [
+        paragraph.strip()
+        for paragraph in text.split("\n\n")
+        if paragraph.strip()
+    ]
+
     chunks = []
+    current_chunk = []
 
-    start = 0
-    text_length = len(text)
+    for paragraph in paragraphs:
+        current_text = "\n\n".join(current_chunk)
 
-    while start < text_length:
-        end = min(start + chunk_size, text_length)
+        if (current_chunk and len(current_text) + len(paragraph) + 2 <= chunk_size):
 
-        chunk = text[start:end].strip()
+            current_chunk.append(paragraph)
+            continue
 
-        if chunk:
-            chunks.append(chunk)
+        if current_chunk:
+            chunks.append("\n\n".join(current_chunk))
+        current_chunk = [paragraph]
 
-        if end == text_length:
-            break
-
-        start = end - overlap
-
-    return chunks
+    if current_chunk:
+        chunks.append("\n\n".join(current_chunk))
+    return chunks        
