@@ -12,3 +12,22 @@ export interface Message {
   content: string;
   citations?: Citation[];
 }
+
+export interface Conversation {
+  id: number;
+  workspace_id: number;
+  title: string;
+}
+
+export interface CitationPreview {
+  source_name: string;
+  page_number: number;
+  text: string;
+}
+
+export interface CitationModalProps {
+  preview: CitationPreview | null;
+  loading: boolean;
+  onClose: () => void;
+}
+

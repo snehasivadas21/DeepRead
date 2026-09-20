@@ -1,20 +1,12 @@
 "use client";
 
-import {
-  FormEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+import {FormEvent,useEffect,useRef,useState,} from "react";
 import { apiRequest } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import CitationModal from "./CitationModal";
 import { Message, Citation } from "@/types/chat";
 
-interface ChatPanelProps {
-  workspaceId: number;
-}
+interface ChatPanelProps {workspaceId: number;}
 
 const PAGE_SIZE = 20;
 
@@ -38,11 +30,7 @@ export default function ChatPanel({ workspaceId,}: ChatPanelProps) {
 
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
 
-  const [citationPreview, setCitationPreview] = useState<{
-    source_name: string;
-    page_number: number;
-    text: string;
-  } | null>(null);
+  const [citationPreview, setCitationPreview] = useState<{source_name: string;page_number: number;text: string;} | null>(null);
 
   const [loadingCitation, setLoadingCitation] = useState(false);  
 
