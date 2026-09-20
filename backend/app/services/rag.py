@@ -1,16 +1,18 @@
 from sqlalchemy.orm import Session
 
-from app.services.vector_search import search_similar_chunks
-from app.services.llm import generate_answer
+from app.services.hybrid_search import hybrid_search_chunks
+from app.services.llm import generate_answer, stream_answer
 from app.services.reranker import rerank_chunks
 
 
-def answer_question(db: Session,query: str,workspace_id: int,top_k: int = 5,):
-    retrieved_results = search_similar_chunks(
+def answer_question(db: Session,query: str,workspace_id: int,top_k: int = 5,source_id: int | None = None,page_number: int | None = None,):
+    retrieved_results = hybrid_search_chunks(
         db=db,
         query=query,
         workspace_id=workspace_id,
         top_k=20,
+        source_id=source_id,
+        page_number=page_number,
     )
 
     print("\n========== VECTOR SEARCH RESULTS ==========")
@@ -90,3 +92,54 @@ def answer_question(db: Session,query: str,workspace_id: int,top_k: int = 5,):
         "answer": answer,
         "citations": citations,
     }
+
+def stream_question(
+    db: Session,
+    query: str,
+    workspace_id: int,
+    top_k: int = 5,
+    source_id: int | None = None,
+    page_number: int | None = None,
+):
+    retrieved_results = hybrid_search_chunks(
+        db=db,
+        query=query,
+        workspace_id=workspace_id,
+        top_k=20,
+        source_id=source_id,
+        page_number=page_number,
+    )
+
+    results = rerank_chunks(
+        query=query,
+        results=retrieved_results,
+        top_k=top_k,
+    )
+
+    context_parts = []
+    citations = []
+
+    for index, item in enumerate(results, start=1):
+        chunk = item["chunk"]
+
+        context_parts.append(
+            f"[Source {index} | Page {chunk.page.page_number}]\n"
+            f"{chunk.text}"
+        )
+
+        citations.append({
+            "citation_id": index,
+            "source_id": chunk.source_id,
+            "source_name": chunk.source.title,
+            "page_number": chunk.page.page_number,
+            "chunk_id": chunk.id,
+        })
+
+    context = "\n\n".join(context_parts)
+
+    answer_stream = stream_answer(
+        context=context,
+        question=query,
+    )
+
+    return answer_stream, citations

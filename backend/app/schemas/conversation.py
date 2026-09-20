@@ -20,6 +20,8 @@ class ConversationResponse(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str
+    source_id: int | None = None
+    page_number: int | None = None
 
 
 class MessageResponse(BaseModel):

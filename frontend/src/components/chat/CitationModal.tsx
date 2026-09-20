@@ -1,4 +1,4 @@
-import { CitationModalProps } from "@/types/citation";
+import { CitationModalProps } from "@/types/chat";
 
 export default function CitationModal({preview,loading,onClose,}: CitationModalProps) {
   return (

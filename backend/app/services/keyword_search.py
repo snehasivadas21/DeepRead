@@ -1,29 +1,32 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.chunk_embeddings import ChunkEmbedding
 from app.models.document_chunks import DocumentChunk
 
-from app.services.embeddings import create_embedding
 
-
-def search_similar_chunks(
+def search_keyword_chunks(
     db: Session,
     query: str,
     workspace_id: int,
-    top_k: int = 5,
+    top_k: int = 20,
     source_id: int | None = None,
     page_number: int | None = None,
 ):
-    query_embedding = create_embedding(query)
+    search_vector = func.to_tsvector(
+        "english",
+        DocumentChunk.text,
+    )
 
-    distance = ChunkEmbedding.embedding.cosine_distance(
-        query_embedding
+    search_query = func.plainto_tsquery(
+        "english",
+        query,
     )
 
     filters = [
         DocumentChunk.source.has(
             workspace_id=workspace_id
-        )
+        ),
+        search_vector.op("@@")(search_query),
     ]
 
     if source_id is not None:
@@ -40,27 +43,27 @@ def search_similar_chunks(
 
     results = (
         db.query(
-            ChunkEmbedding,
-            distance.label("distance"),
-        )
-        .join(
             DocumentChunk,
-            DocumentChunk.id == ChunkEmbedding.chunk_id,
+            func.ts_rank(
+                search_vector,
+                search_query,
+            ).label("keyword_score"),
         )
         .filter(*filters)
-        .order_by(distance)
+        .order_by(
+            func.ts_rank(
+                search_vector,
+                search_query,
+            ).desc()
+        )
         .limit(top_k)
         .all()
     )
 
     return [
         {
-            "chunk": chunk_embedding.chunk,
-            "distance": float(distance_value),
-            "similarity": round(
-                1 - float(distance_value),
-                4,
-            ),
+            "chunk": chunk,
+            "keyword_score": float(score),
         }
-        for chunk_embedding, distance_value in results
+        for chunk, score in results
     ]

@@ -93,6 +93,8 @@ def send_message(
         query=data.content,
         workspace_id=conversation.workspace_id,
         top_k=5,
+        source_id=data.source_id,
+        page_number=data.page_number,
     )
 
     assistant_message = Message(
