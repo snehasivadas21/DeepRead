@@ -130,7 +130,7 @@ def stream_question(
         citations.append({
             "citation_id": index,
             "source_id": chunk.source_id,
-            "source_name": chunk.source.title,
+            "source_name": chunk.source.file_url.split("/")[-1],
             "page_number": chunk.page.page_number,
             "chunk_id": chunk.id,
         })

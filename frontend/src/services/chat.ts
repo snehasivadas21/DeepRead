@@ -83,6 +83,7 @@ export async function sendMessageStream(
   content: string,
   accessToken: string,
   onToken: (token: string) => void,
+  onCitations: (citations: Citation[]) => void,
 ): Promise<void> {
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/conversations/${conversationId}/messages/stream`,
@@ -114,6 +115,8 @@ export async function sendMessageStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
+  let fullResponse = "";
+
   try {
     while (true) {
       const { value, done } = await reader.read();
@@ -126,20 +129,36 @@ export async function sendMessageStream(
         stream: true,
       });
 
-      if (chunk) {
-        onToken(chunk);
-      }
+      fullResponse += chunk;
     }
 
     const remaining = decoder.decode();
 
     if (remaining) {
-      onToken(remaining);
+      fullResponse += remaining;
     }
+
+    const citationMarker = "\n\n__CITATIONS__\n";
+
+    const markerIndex = fullResponse.indexOf(citationMarker);
+
+    if (markerIndex === -1) {
+      onToken(fullResponse);
+      return;
+    }
+
+    const answer = fullResponse.slice(0, markerIndex);
+    const citationData = fullResponse.slice(
+      markerIndex + citationMarker.length,
+    );
+
+    onToken(answer);
+
+    const citations: Citation[] = JSON.parse(citationData);
+
+    onCitations(citations);
   } finally {
     reader.releaseLock();
   }
 }
-
-
 

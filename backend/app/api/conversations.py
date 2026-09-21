@@ -165,6 +165,11 @@ def stream_message(
         db.add(assistant_message)
         db.commit()
 
+        import json
+
+        yield "\n\n__CITATIONS__\n"
+        yield json.dumps(citations)
+
     return StreamingResponse(
         generate(),
         media_type="text/plain",

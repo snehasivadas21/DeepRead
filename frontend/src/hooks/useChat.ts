@@ -328,7 +328,23 @@ export function useChat(workspaceId: number) {
             }
           });
         },
+        (citations) => {
+          setMessages((previous) => { 
+            const updated = [...previous]; 
+            const lastIndex = updated.length - 1; 
+            if ( 
+              updated[lastIndex]?.role !== "assistant" 
+            ) { 
+              return previous; 
+            } 
+            updated[lastIndex] = {
+              ...updated[lastIndex], citations, 
+            }; 
+            return updated; 
+          }); 
+        }, 
       );
+      
     } catch (err) {
       setError(
         err instanceof Error

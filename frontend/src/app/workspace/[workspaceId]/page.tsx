@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -8,8 +9,8 @@ import { useSources } from "@/hooks/useSources";
 
 import SourceUpload from "@/components/source/SourceUpload";
 import SourceList from "@/components/source/SourceList";
-
 import ChatPanel from "@/components/chat/ChatPanel";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function WorkspacePage() {
   const params = useParams();
@@ -30,6 +31,32 @@ export default function WorkspacePage() {
     uploadFile,
     removeSource,
   } = useSources(workspaceId);
+
+  const [deleteSourceId, setDeleteSourceId] =
+    useState<number | null>(null);
+
+  const [deleteLoading, setDeleteLoading] =
+    useState(false);
+
+  function handleDeleteRequest(sourceId: number) {
+    setDeleteSourceId(sourceId);
+  }
+
+  async function handleDeleteConfirm() {
+    if (deleteSourceId === null) {
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+
+      await removeSource(deleteSourceId);
+
+      setDeleteSourceId(null);
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -62,31 +89,33 @@ export default function WorkspacePage() {
   }
 
   return (
-    
     <main className="min-h-screen bg-gray-50">
       <header className="border-b bg-white px-6 py-4">
         <div className="flex items-center gap-4">
-          {/* Logo */}
           <Link href="/dashboard" className="shrink-0">
-            <h1 className="text-xl font-bold leading-tight">DeepRead</h1>
-            <p className="text-xs text-gray-500">AI Research Platform</p>
+            <h1 className="text-xl font-bold leading-tight">
+              DeepRead
+            </h1>
+
+            <p className="text-xs text-gray-500">
+              AI Research Platform
+            </p>
           </Link>
 
-          {/* Divider */}
           <span className="h-8 w-px bg-gray-200" />
 
-          {/* Workspace info */}
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold leading-tight">
               {workspace.name}
             </h2>
+
             <p className="truncate text-xs text-gray-500">
               {workspace.description || "No description"}
             </p>
           </div>
         </div>
       </header>
-          
+
       <div className="grid gap-6 md:grid-cols-2">
         <section className="rounded-xl border bg-white p-6">
           <div className="mb-6">
@@ -118,7 +147,7 @@ export default function WorkspacePage() {
             ) : (
               <SourceList
                 sources={sources}
-                onDelete={removeSource}
+                onDelete={handleDeleteRequest}
               />
             )}
           </div>
@@ -128,6 +157,15 @@ export default function WorkspacePage() {
           <ChatPanel workspaceId={workspaceId} />
         </section>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteSourceId !== null}
+        title="Delete source?"
+        message="This action cannot be undone. The source and its processed data may be permanently deleted."
+        onCancel={() => setDeleteSourceId(null)}
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+      />
     </main>
   );
 }

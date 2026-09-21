@@ -6,12 +6,16 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 
+import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState(""); 
 
   const router = useRouter();
 
@@ -20,8 +24,29 @@ export default function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setMessage("");
-    setError("");
+    setEmailError("");
+    setPasswordError("");
+
+    let valid = true;
+
+    if (!email.trim()) {
+      setEmailError("Email is required");
+      valid = false;
+    } else if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+    ) {
+      setEmailError("Enter a valid email address");
+      valid = false;
+    }
+
+    if (!password) {
+      setPasswordError("Password is required");
+      valid = false;
+    }
+
+    if (!valid) {
+      return;
+    }
 
     try {
       const data = await apiRequest("/auth/login", {
@@ -33,12 +58,12 @@ export default function LoginPage() {
       });
       setAccessToken(data.access_token)
 
-      setMessage("Login successful!");
+      toast.success("Login successful!");
       setTimeout(() => {
         router.push("/dashboard");
       }, 500);
     } catch (err) {
-      setError(
+      toast.error(
         err instanceof Error ? err.message : "Login failed"
       );
     }
@@ -52,31 +77,69 @@ export default function LoginPage() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border p-3"
-            required
-          />
+          <div>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded border p-3"
+              required
+            />
+            {emailError && (
+              <p className="mt-1 text-sm text-red-600">
+                {emailError}
+              </p>
+            )}
+          </div>  
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border p-3"
-            required
-          />
+          <div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) =>
+                  setPassword(e.target.value)
+                }
+                className="w-full rounded border p-3 pr-10"
+                required
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPassword((previous) => !previous)
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={20} />
+                ) : (
+                  <Eye size={20} />
+                )}
+              </button>
+            </div>
+
+            {passwordError && (
+              <p className="mt-1 text-sm text-red-600">
+                {passwordError}
+              </p>
+            )}
+          </div>
 
           <div className="text-right">
-            <a
+            <Link
               href="/forgot-password"
               className="text-sm text-gray-600 hover:text-black"
             >
               Forgot password?
-            </a>
+            </Link>
           </div>
 
           <button
@@ -114,13 +177,6 @@ export default function LoginPage() {
           </p>
         </form>
 
-        {message && (
-          <p className="mt-4 text-green-600">{message}</p>
-        )}
-
-        {error && (
-          <p className="mt-4 text-red-600">{error}</p>
-        )}
       </div>
     </main>
   );

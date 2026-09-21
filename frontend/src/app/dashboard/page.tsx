@@ -1,17 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import Sidebar from "@/components/Sidebar";
 import WorkspaceList from "@/components/workspace/WorkspaceList";
 import WorkspaceModal from "@/components/workspace/WorkspaceModal";
+import ConfirmModal from "@/components/ConfirmModal";
 
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { Workspace } from "@/types/workspace";
 
 export default function DashboardPage() {
-  const router = useRouter();
 
   const {
     workspaces,
@@ -25,6 +24,9 @@ export default function DashboardPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] =
     useState<Workspace | null>(null);
+  
+  const [deleteWorkspaceId, setDeleteWorkspaceId] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [message, setMessage] = useState("");
 
@@ -63,26 +65,26 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleDelete(workspaceId: number) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this workspace?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await removeWorkspace(workspaceId);
-      setMessage("Workspace deleted successfully.");
-    } catch (err) {
-      setMessage(
-        err instanceof Error
-          ? err.message
-          : "Failed to delete workspace."
-      );
-    }
+  function handleDeleteRequest(workspaceId: number) {
+    setDeleteWorkspaceId(workspaceId); 
   }
+
+  async function handleDeleteConfirm() {
+    if (deleteWorkspaceId === null) {
+       return; 
+    } setDeleteLoading(true); 
+
+    try { 
+      await removeWorkspace(deleteWorkspaceId); 
+
+      setMessage("Workspace deleted successfully."); 
+      setDeleteWorkspaceId(null); 
+    } catch (err) { 
+      setMessage( 
+        err instanceof Error ? err.message : "Failed to delete workspace." ); 
+    } finally { 
+      setDeleteLoading(false); 
+    } }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -158,7 +160,7 @@ export default function DashboardPage() {
               <WorkspaceList
                 workspaces={workspaces}
                 onEdit={handleEdit}
-                onDelete={handleDelete}
+                onDelete={handleDeleteRequest}
               />
             )}
           </div>
@@ -172,6 +174,14 @@ export default function DashboardPage() {
         onClose={() => setShowModal(false)}
         onSubmit={handleSubmit}
       />
+
+      <ConfirmModal 
+        isOpen={deleteWorkspaceId !== null} 
+        title="Delete workspace?" 
+        message="This action cannot be undone. The workspace and its related data may be permanently deleted." 
+        onCancel={() => setDeleteWorkspaceId(null)} 
+        onConfirm={handleDeleteConfirm} 
+        loading={deleteLoading} />
     </div>
   );
 }
