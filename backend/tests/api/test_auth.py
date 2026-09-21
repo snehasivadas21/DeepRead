@@ -1,12 +1,8 @@
-from fastapi.testclient import TestClient
-from app.main import app
-
-client = TestClient(app)
-
 def test_register_user(client):
     response = client.post("/auth/register",json={
         "email":"testuser@example.com",
         "password":"StrongPassword123",
+        "confirm_password": "StrongPassword123",
         "user_name":"Test User",
     },)
     
@@ -23,6 +19,7 @@ def test_register_duplicate_email(client):
     user_data = {
         "email": "duplicate@example.com",
         "password": "StrongPassword123",
+        "confirm_password": "StrongPassword123",
         "user_name": "Duplicate User",
     }  
 

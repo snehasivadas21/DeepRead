@@ -1,14 +1,12 @@
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
 from app.db.base import Base
 from app.main import app
 from app.db.session import settings
-from app.api.auth import get_db
-from app.models.users import User
-from app.models.email_verification import EmailVerification
+from app.db.dependencies import get_db
 
 
 TEST_DATABASE_URL = settings.TEST_DATABASE_URL
@@ -33,20 +31,29 @@ def setup_database():
 
 @pytest.fixture
 def db_session():
-    db = TestingSessionLocal()
+    connection = test_engine.connect()
+    transaction = connection.begin()
+
+    db = TestingSessionLocal(bind=connection)
+
+    nested = connection.begin_nested()
+
+    @event.listens_for(db, "after_transaction_end")
+    def restart_savepoint(session, trans):
+        nonlocal nested
+        if not nested.is_active:
+            nested=connection.begin_nested()
 
     try:
         yield db
     finally:
         db.close()
+        transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture
 def client(db_session):
-    db_session.query(EmailVerification).delete()
-    db_session.query(User).delete()
-    db_session.commit()
-
     def override_get_db():
         yield db_session
 
