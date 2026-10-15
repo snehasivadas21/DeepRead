@@ -111,7 +111,7 @@ export default function RegisterPage() {
           Create your account
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
             <input
               type="text"
@@ -119,7 +119,6 @@ export default function RegisterPage() {
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               className="w-full rounded border p-3"
-              required
             />
             {fieldErrors.userName && ( 
               <p className="mt-1 text-sm text-red-600"> 
@@ -135,7 +134,6 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded border p-3"
-              required
             />
             {fieldErrors.email && ( 
               <p className="mt-1 text-sm text-red-600"> 
@@ -154,7 +152,6 @@ export default function RegisterPage() {
                   setPassword(e.target.value)
                 }
                 className="w-full rounded border p-3 pr-10"
-                required
               />
 
               <button
@@ -198,7 +195,6 @@ export default function RegisterPage() {
                   setConfirmPassword(e.target.value)
                 }
                 className="w-full rounded border p-3 pr-10"
-                required
               />
 
               <button

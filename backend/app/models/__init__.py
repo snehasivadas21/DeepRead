@@ -5,3 +5,11 @@ from app.models.refresh_token import RefreshToken
 from app.models.sources import Source
 from app.models.user_profile import UserProfile
 from app.models.workspaces import Workspace
+from app.models.source_pages import SourcePage
+from app.models.document_chunks import DocumentChunk
+from app.models.chunk_embeddings import ChunkEmbedding
+from app.models.conversations import Conversation
+from app.models.messages import Message
+from app.models.research import ResearchTask
+from app.models.research_step import ResearchStep
+from app.models.research_evidence import ResearchEvidence
