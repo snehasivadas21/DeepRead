@@ -8,7 +8,9 @@ from app.models.sources import Source
 from app.models.source_pages import SourcePage
 from app.models.document_chunks import DocumentChunk
 from app.models.chunk_embeddings import ChunkEmbedding
-
+from app.models.research import ResearchTask
+from app.services.research_planner import create_research_steps
+from app.services.research_orchestrator import run_research
 from app.services.embeddings import (create_embedding,EMBEDDING_MODEL)
 from app.services.email import send_verification_email, send_password_reset_email
 from app.services.chunking import chunk_text
@@ -152,3 +154,79 @@ def embed_source_chunks(source_id: int):
 
     finally:
         db.close()
+
+@celery_app.task
+def run_research_task(research_task_id: int):
+    db = SessionLocal()
+
+    try:
+        research_task = (
+            db.query(ResearchTask)
+            .filter(
+                ResearchTask.id == research_task_id
+            )
+            .first()
+        )
+
+        if not research_task:
+            return {
+                "status": "failed",
+                "message": "Research task not found",
+            }
+
+        run_research(
+            db=db,
+            research_task=research_task,
+        )
+
+        return {
+            "status": "completed",
+            "research_task_id": research_task_id,
+        }
+
+    except Exception:
+        db.rollback()
+        raise
+
+    finally:
+        db.close()
+
+@celery_app.task
+def run_research_task(research_task_id: int):
+    db = SessionLocal()
+
+    try:
+        research_task = (
+            db.query(ResearchTask)
+            .filter(ResearchTask.id == research_task_id)
+            .first()
+        )
+
+        if not research_task:
+            return {
+                "status": "failed",
+                "message": "Research task not found",
+            }
+
+        create_research_steps(
+            db=db,
+            research_task=research_task,
+        )
+
+        run_research(
+            db=db,
+            research_task=research_task,
+        )
+
+        return {
+            "status": "completed",
+            "research_task_id": research_task_id,
+        }
+
+    except Exception:
+        db.rollback()
+        raise
+
+    finally:
+        db.close()
+

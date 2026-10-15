@@ -19,13 +19,15 @@ from app.models.document_chunks import DocumentChunk
 from app.models.chunk_embeddings import ChunkEmbedding
 from app.models.conversations import Conversation
 from app.models.messages import Message
+from app.models.research import ResearchTask
+from app.models.research_evidence import ResearchEvidence
 
 from app.db.session import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

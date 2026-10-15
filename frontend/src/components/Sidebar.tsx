@@ -7,7 +7,7 @@ import { apiRequest } from "@/services/api";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: "⌂" },
-  { name: "Research", href: "/research", icon: "⌕" },
+  { name: "Evaluation", href: "/evaluation", icon: "⌕" },
   { name: "Profile", href: "/profile", icon: "◯" },
 ];
 
