@@ -12,5 +12,6 @@ class UserProfile(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"),unique=True,nullable=False,index=True)
     name: Mapped[str] = mapped_column(String(150),nullable=False)
     profile_image: Mapped[str | None] = mapped_column(String(500),nullable=True)
+    profile_image_public_id: Mapped[str | None] = mapped_column(String(255),nullable=True,)
     created_at: Mapped[datetime] = mapped_column(DateTime,nullable=False,default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime,nullable=False,default=datetime.utcnow,onupdate=datetime.utcnow)

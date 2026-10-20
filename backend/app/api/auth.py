@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
@@ -23,6 +23,8 @@ from app.worker.tasks import send_verification_email_task, send_password_reset_e
 
 from app.core.config import settings
 from app.core.oauth import oauth
+
+from app.services.cloudinary_services import (upload_profile_image,delete_profile_image,)
 
 from app.core.security import create_access_token,create_refresh_token, get_current_user, verify_refresh_token
 
@@ -331,18 +333,93 @@ def get_profile(current_user: User = Depends(get_current_user),db: Session = Dep
             "created_at":profile.created_at,
             "updated_at":profile.updated_at,}
 
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+}
+
 @router.put("/profile", response_model=ProfileResponse)
-def update_profile(data: ProfileUpdateRequest,current_user: User = Depends(get_current_user),db: Session = Depends(get_db),):
-    profile = (db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first())
+def update_profile(
+    name: str = Form(...),
+    profile_image: UploadFile | None = File(None),
+    remove_profile_image: bool = Form(False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = (
+        db.query(UserProfile)
+        .filter(UserProfile.user_id == current_user.id)
+        .first()
+    )
 
     if not profile:
-        raise HTTPException(status_code=404,detail="Profile not found",)
+        raise HTTPException(404, "Profile not found")
 
-    profile.name = data.name
-    profile.profile_image = data.profile_image
+    if not name.strip():
+        raise HTTPException(422, "Name is required")
 
-    db.commit()
-    db.refresh(profile)
+    old_public_id = getattr(profile, "profile_image_public_id", None)
+    new_public_id = None
+
+    if profile_image is not None:
+        if profile_image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                415, "Only JPG, PNG, and WebP images are allowed"
+            )
+
+        contents = profile_image.file.read(MAX_IMAGE_SIZE + 1)
+
+        if len(contents) > MAX_IMAGE_SIZE:
+            raise HTTPException(413, "Image must be 5 MB or smaller")
+
+        if not contents:
+            raise HTTPException(422, "Uploaded image is empty")
+
+        try:
+            import io
+
+            image_url, new_public_id = upload_profile_image(
+                io.BytesIO(contents)
+            )
+        except Exception as exc:
+            raise HTTPException(
+                502, "Image upload failed"
+            ) from exc
+
+        profile.profile_image = image_url
+        profile.profile_image_public_id = new_public_id
+
+    elif remove_profile_image:
+        profile.profile_image = None
+        profile.profile_image_public_id = None
+
+    profile.name = name.strip()
+
+    try:
+        db.commit()
+        db.refresh(profile)
+    except Exception:
+        db.rollback()
+
+        if new_public_id:
+            try:
+                delete_profile_image(new_public_id)
+            except Exception:
+                pass
+
+        raise HTTPException(500, "Profile update failed")
+
+    if old_public_id and (
+        remove_profile_image or new_public_id
+    ):
+        try:
+            delete_profile_image(old_public_id)
+        except Exception:
+            # The profile update succeeded; old asset cleanup can
+            # be retried separately if Cloudinary is unavailable.
+            pass
 
     return {
         "user_id": profile.user_id,
