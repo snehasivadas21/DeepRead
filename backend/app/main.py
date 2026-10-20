@@ -9,6 +9,7 @@ from app.api.rag import router as rag_router
 from app.api.conversations import router as conversations_router
 from app.api.messages import router as messages_router
 from app.api.research import router as research_router
+from app.api.evaluation import router as evaluation_router
 
 from starlette.middleware.sessions import SessionMiddleware
 from app.core.config import settings
@@ -36,4 +37,5 @@ app.include_router(rag_router)
 app.include_router(conversations_router)
 app.include_router(messages_router)
 app.include_router(research_router)
+app.include_router(evaluation_router)
 

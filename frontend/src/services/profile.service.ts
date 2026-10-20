@@ -1,5 +1,5 @@
 import { apiRequest } from "@/services/api";
-import {UserProfile,ProfileUpdateData,} from "@/types/profile";
+import {UserProfile} from "@/types/profile";
 
 export async function getProfile(
   accessToken: string | null
@@ -14,14 +14,14 @@ export async function getProfile(
 }
 
 export async function updateProfile(
-  data: ProfileUpdateData,
+  data: FormData,
   accessToken: string | null
 ): Promise<UserProfile> {
   return apiRequest(
     "/auth/profile",
     {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     },
     accessToken
   );

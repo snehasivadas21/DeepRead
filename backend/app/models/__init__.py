@@ -13,3 +13,5 @@ from app.models.messages import Message
 from app.models.research import ResearchTask
 from app.models.research_step import ResearchStep
 from app.models.research_evidence import ResearchEvidence
+from app.models.evaluation import EvaluationDataset, EvaluationCase
+from app.models.evaluation_run import EvaluationRun

@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "openrouter/free"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
+
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

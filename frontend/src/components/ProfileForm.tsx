@@ -1,17 +1,19 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { ProfileUpdateData, UserProfile } from "@/types/profile";
+import { UserProfile } from "@/types/profile";
 
 interface ProfileFormProps {
   profile: UserProfile;
   updating: boolean;
-  onSave: (data: ProfileUpdateData) => Promise<void>;
+  onSave: (data: FormData) => Promise<void>;
 }
 
 export default function ProfileForm({ profile, updating, onSave }: ProfileFormProps) {
   const [name, setName] = useState(profile.name);
   const [profileImage, setProfileImage] = useState(profile.profile_image || "");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +27,23 @@ export default function ProfileForm({ profile, updating, onSave }: ProfileFormPr
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Please select a JPG, PNG, or WebP image.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be 5 MB or smaller.");
+      e.target.value = "";
+      return;
+    }
+
+    setError("");
+    setSelectedFile(file);
+    setRemovePhoto(false);
+
+    // Preview only; upload the original File separately.
     const reader = new FileReader();
     reader.onload = () => setProfileImage(reader.result as string);
     reader.readAsDataURL(file);
@@ -40,17 +59,25 @@ export default function ProfileForm({ profile, updating, onSave }: ProfileFormPr
       return;
     }
 
+    const formData = new FormData();
+    formData.append("name", name.trim());
+    formData.append("remove_profile_image", String(removePhoto));
+
+    if (selectedFile) {
+      formData.append("profile_image", selectedFile);
+    }
+
     try {
-      await onSave({
-        name: name.trim(),
-        profile_image: profileImage || null,
-      });
+      await onSave(formData);
+      setSelectedFile(null);
+      setRemovePhoto(false);
       setMessage("Profile updated successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile.");
+      setError(
+        err instanceof Error ? err.message : "Failed to update profile."
+      );
     }
   }
-
   const hasChanges = name.trim() !== profile.name || profileImage !== (profile.profile_image || "");
 
   return (
@@ -93,7 +120,11 @@ export default function ProfileForm({ profile, updating, onSave }: ProfileFormPr
           {profileImage && (
             <button
               type="button"
-              onClick={() => setProfileImage("")}
+              onClick={() => {
+                setProfileImage("");
+                setSelectedFile(null);
+                setRemovePhoto(true);
+              }}
               className="mt-2 text-xs font-medium text-red-600 hover:underline"
             >
               Remove photo
