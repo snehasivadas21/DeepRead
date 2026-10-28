@@ -28,9 +28,7 @@ def process_research_step(
         )
 
         research_step.status = "completed"
-        research_step.result = (
-            f"Retrieved {len(evidence)} evidence items."
-        )
+        research_step.result = str(analysis)
 
         db.commit()
         db.refresh(research_step)

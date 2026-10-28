@@ -25,10 +25,11 @@ Return ONLY valid JSON in this exact format:
 }
 
 Rules:
-- Create 3 to 5 research steps.
-- Each question must be specific and useful for research.
-- Do not answer the questions.
-- Do not include markdown.
+- Keep every step directly focused on the original research question.
+- Treat the original question as the primary objective throughout.
+- Research only information relevant to the original question.
+- Do not create broad document-summary steps unless explicitly requested.
+- Use 3–5 steps only when the question warrants that many; avoid redundant steps.
 """
 
         user_prompt = f"""

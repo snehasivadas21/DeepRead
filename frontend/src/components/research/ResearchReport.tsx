@@ -1,14 +1,15 @@
-
 "use client";
 
-import type { ResearchDetails } from "@/types/research";
+import type { ResearchDetails, ResearchEvidence } from "@/types/research";
 
 interface ResearchReportProps {
   research: ResearchDetails;
+  onEvidenceClick?: (evidence: ResearchEvidence) => void;
 }
 
 export default function ResearchReport({
   research,
+  onEvidenceClick,
 }: ResearchReportProps) {
   return (
     <section className="rounded-xl border bg-white p-5">
@@ -56,18 +57,30 @@ export default function ResearchReport({
                     {step.evidence.map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-lg bg-gray-50 p-3"
+                        className="rounded-lg border bg-gray-50 p-3"
                       >
                         <p className="whitespace-pre-wrap text-sm text-gray-700">
                           {item.content}
                         </p>
 
-                        <p className="mt-2 text-xs text-gray-500">
-                          Source ID: {item.source_id}
-                          {item.page_number != null
-                            ? ` · Page ${item.page_number}`
-                            : ""}
-                        </p>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs text-gray-500">
+                            Source {item.source_id}
+                            {item.page_number != null
+                              ? ` · Page ${item.page_number}`
+                              : ""}
+                          </p>
+
+                          {onEvidenceClick && (
+                            <button
+                              type="button"
+                              onClick={() => onEvidenceClick(item)}
+                              className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                            >
+                              Open source
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

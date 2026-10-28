@@ -1,65 +1,51 @@
 "use client";
 
-import {createContext,useContext,useEffect,useState,ReactNode,} from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
 interface AuthContextType {
   accessToken: string | null;
+  isAuthLoading: boolean;
   setAccessToken: (token: string) => void;
   clearAccessToken: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [accessToken, setAccessTokenState] =
-    useState<string | null>(null);
+let refreshPromise: Promise<string | null> | null = null;
 
-  function setAccessToken(token: string) {
-    setAccessTokenState(token);
+function refreshOnce(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then(async (res) => (res.ok ? (await res.json()).access_token : null))
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
+  return refreshPromise;
+}
 
-  function clearAccessToken() {
-    setAccessTokenState(null);
-  }
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [accessToken, setAccessTokenState] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    async function refreshAccessToken() {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
-          {
-            method: "POST",
-            credentials: "include",
-          }
-        );
-
-        if (!response.ok) {
-          return;
-        }
-
-        const data = await response.json();
-
-        setAccessTokenState(data.access_token);
-      } catch (error) {
-        console.error("Failed to refresh access token:", error);
-      }
-    }
-
-    refreshAccessToken();
+    refreshOnce().then((token) => {
+      setAccessTokenState(token);
+      setIsAuthLoading(false);
+    });
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
         accessToken,
-        setAccessToken,
-        clearAccessToken,
+        isAuthLoading,
+        setAccessToken: setAccessTokenState,
+        clearAccessToken: () => setAccessTokenState(null),
       }}
     >
       {children}
@@ -69,12 +55,6 @@ export function AuthProvider({
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error(
-      "useAuth must be used inside AuthProvider"
-    );
-  }
-
+  if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
 }

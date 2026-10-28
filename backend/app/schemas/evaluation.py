@@ -36,3 +36,4 @@ class EvaluationResultResponse(BaseModel):
     answer: str
     answer_relevance: float
     faithfulness: float
+    answer_quality_explanation: str

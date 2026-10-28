@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
 
+    GITHUB_CLIENT_ID:str
+    GITHUB_CLIENT_SECRET:str
+    GITHUB_REDIRECT_URI: str = "http://localhost:8000/auth/github/callback"
+    
 
     model_config = SettingsConfigDict(env_file=".env")
 

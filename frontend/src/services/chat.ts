@@ -85,8 +85,7 @@ export async function sendMessageStream(
   onToken: (token: string) => void,
   onCitations: (citations: Citation[]) => void,
 ): Promise<void> {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/conversations/${conversationId}/messages/stream`,
+  return apiRequest(`conversations/${conversationId}/messages/stream`,
     {
       method: "POST",
       credentials: "include",
