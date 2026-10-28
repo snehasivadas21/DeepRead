@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta,timezone
 
 from app.db.dependencies import get_db
 
@@ -81,7 +81,7 @@ def verify_email(token: str, db:Session = Depends(get_db)):
     if verification.verified_at is not None:
         raise HTTPException(status_code=400,detail="Email already verified")
 
-    if verification.expires_at < datetime.utcnow():
+    if verification.expires_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=400,detail="Verification token has expired")
 
     user = (db.query(User).filter(User.id == verification.user_id).first())
@@ -90,7 +90,7 @@ def verify_email(token: str, db:Session = Depends(get_db)):
         raise HTTPException(status_code=404,detail="User not found")
 
     user.email_verified = True
-    verification.verified_at = datetime.utcnow()
+    verification.verified_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -109,7 +109,7 @@ def login_user(user_data: LoginRequest,response: Response, db: Session = Depends
     if not user.email_verified:
         raise HTTPException(status_code=403,detail="Please verify your email first")
 
-    user.last_login_at = datetime.utcnow()
+    user.last_login_at = datetime.now(timezone.utc)
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
@@ -158,17 +158,17 @@ def refresh_access_token(request: Request,response: Response, db: Session = Depe
     if not stored_token:
         raise HTTPException(status_code=401,detail="Invalid or revoked refresh token",)
 
-    if stored_token.expires_at < datetime.utcnow():
+    if stored_token.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401,detail="Refresh token has expired",)
 
-    stored_token.revoked_at = datetime.utcnow()
+    stored_token.revoked_at = datetime.now(timezone.utc)
 
     access_token = create_access_token(user.id)
     new_refresh_token = create_refresh_token(user.id)
 
     new_refresh_token_record = RefreshToken(user_id=user.id,token_hash=hash_refresh_token(new_refresh_token),
-                                            expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-                                            created_at=datetime.utcnow(),)
+                                            expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+                                            created_at=datetime.now(timezone.utc),)
 
     db.add(new_refresh_token_record)
     db.commit()
@@ -197,7 +197,7 @@ def logout_user(request: Request,response: Response,db: Session = Depends(get_db
     if not stored_token:
         raise HTTPException(status_code=401,detail="Invalid or already refresh token")
     
-    stored_token.revoked_at = datetime.utcnow()
+    stored_token.revoked_at = datetime.now(timezone.utc)
     db.commit()
 
     response.delete_cookie(
@@ -218,8 +218,8 @@ def forgot_password(email: str,db: Session = Depends(get_db)):
 
         reset_record = PasswordResetToken(user_id=user.id,
                                           token_hash=hash_password_reset_token(reset_token),
-                                          expires_at=datetime.utcnow() + timedelta(minutes=30),
-                                          created_at=datetime.utcnow())
+                                          expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+                                          created_at=datetime.now(timezone.utc))
         db.add(reset_record)
         db.commit()
 
@@ -238,7 +238,7 @@ def reset_password(data: ResetPasswordRequest,db: Session = Depends(get_db)):
     if not reset_record:
         raise HTTPException(status_code=400,detail="Invalid or already used reset token")
 
-    if reset_record.expires_at < datetime.utcnow():
+    if reset_record.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400,detail="Reset token has expired")
 
     user = (db.query(User).filter(User.id == reset_record.user_id).first())
@@ -248,7 +248,7 @@ def reset_password(data: ResetPasswordRequest,db: Session = Depends(get_db)):
 
     user.password_hash = hash_password(data.new_password)
 
-    reset_record.used_at = datetime.utcnow()
+    reset_record.used_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -319,6 +319,129 @@ async def google_callback(
         url=f"http://localhost:3000/google-callback?access_token={access_token}"
     )
 
+@router.get("/github/login")
+async def github_login(request: Request):
+    return await oauth.github.authorize_redirect(
+        request,
+        settings.GITHUB_REDIRECT_URI,
+    )
+
+@router.get("/github/callback")
+async def github_callback(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    token = await oauth.github.authorize_access_token(request)
+
+    github_response = await oauth.github.get("user", token=token)
+    github_response.raise_for_status()
+    github_user = github_response.json()
+
+    email_response = await oauth.github.get(
+        "user/emails",
+        token=token,
+    )
+    email_response.raise_for_status()
+    emails = email_response.json()
+
+    verified_emails = [
+        item for item in emails
+        if item.get("verified") and item.get("email")
+    ]
+
+    primary_email = next(
+        (item["email"] for item in verified_emails
+         if item.get("primary")),
+        None,
+    )
+
+    email = primary_email or (
+        verified_emails[0]["email"] if verified_emails else None
+    )
+
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail="A verified GitHub email address is required.",
+        )
+
+    name = github_user.get("name") or github_user.get("login")
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if user and not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is inactive")
+
+    if not user:
+        user = User(
+            email=email,
+            user_name=name,
+            password_hash=None,
+            is_active=True,
+            email_verified=True,
+        )
+        db.add(user)
+        db.flush()
+
+        profile = UserProfile(
+            user_id=user.id,
+            name=name,
+            profile_image=github_user.get("avatar_url"),
+        )
+        db.add(profile)
+
+    else:
+        
+        user.email_verified = True
+
+        profile = (
+            db.query(UserProfile)
+            .filter(UserProfile.user_id == user.id)
+            .first()
+        )
+
+        if not profile:
+            db.add(
+                UserProfile(
+                    user_id=user.id,
+                    name=name,
+                    profile_image=github_user.get("avatar_url"),
+                )
+            )
+
+    user.last_login_at = datetime.now(timezone.utc)
+
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+
+    refresh_record = RefreshToken(
+        user_id=user.id,
+        token_hash=hash_refresh_token(refresh_token),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(refresh_record)
+    db.commit()
+
+    redirect_response = RedirectResponse(
+        url=(
+            "http://localhost:3000/github-callback"
+            f"?access_token={access_token}"
+        )
+    )
+
+    redirect_response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False, 
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+    return redirect_response
+
 @router.get("/profile", response_model=ProfileResponse)
 def get_profile(current_user: User = Depends(get_current_user),db: Session = Depends(get_db)):
     profile = (db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first())
@@ -341,13 +464,8 @@ ALLOWED_IMAGE_TYPES = {
 }
 
 @router.put("/profile", response_model=ProfileResponse)
-def update_profile(
-    name: str = Form(...),
-    profile_image: UploadFile | None = File(None),
-    remove_profile_image: bool = Form(False),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def update_profile(name: str = Form(...),profile_image: UploadFile | None = File(None),remove_profile_image: bool = Form(False),
+                current_user: User = Depends(get_current_user),db: Session = Depends(get_db),):
     profile = (
         db.query(UserProfile)
         .filter(UserProfile.user_id == current_user.id)
@@ -417,8 +535,6 @@ def update_profile(
         try:
             delete_profile_image(old_public_id)
         except Exception:
-            # The profile update succeeded; old asset cleanup can
-            # be retried separately if Cloudinary is unavailable.
             pass
 
     return {

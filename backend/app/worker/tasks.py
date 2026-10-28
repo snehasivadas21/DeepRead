@@ -162,42 +162,6 @@ def run_research_task(research_task_id: int):
     try:
         research_task = (
             db.query(ResearchTask)
-            .filter(
-                ResearchTask.id == research_task_id
-            )
-            .first()
-        )
-
-        if not research_task:
-            return {
-                "status": "failed",
-                "message": "Research task not found",
-            }
-
-        run_research(
-            db=db,
-            research_task=research_task,
-        )
-
-        return {
-            "status": "completed",
-            "research_task_id": research_task_id,
-        }
-
-    except Exception:
-        db.rollback()
-        raise
-
-    finally:
-        db.close()
-
-@celery_app.task
-def run_research_task(research_task_id: int):
-    db = SessionLocal()
-
-    try:
-        research_task = (
-            db.query(ResearchTask)
             .filter(ResearchTask.id == research_task_id)
             .first()
         )

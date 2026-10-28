@@ -6,10 +6,6 @@ import { useAuth } from "@/context/AuthContext";
 import CitationModal from "./CitationModal";
 import { Message, Citation } from "@/types/chat";
 
-import { useResearch } from "@/hooks/useResearch";
-import ResearchProgress from "@/components/research/ResearchProgress";
-import ResearchReport from "@/components/research/ResearchReport";
-
 interface ChatPanelProps {workspaceId: number;}
 
 const PAGE_SIZE = 20;
@@ -37,8 +33,6 @@ export default function ChatPanel({ workspaceId,}: ChatPanelProps) {
   const [citationPreview, setCitationPreview] = useState<{source_name: string;page_number: number;text: string;} | null>(null);
 
   const [loadingCitation, setLoadingCitation] = useState(false);  
-
-  const {research, starting, error: researchError, startResearch,} = useResearch(workspaceId);
 
   async function loadMessages(
     activeConversationId: number,
@@ -310,16 +304,6 @@ export default function ChatPanel({ workspaceId,}: ChatPanelProps) {
       setLoadingCitation(false);
     }
   }
-
-  async function handleDeepResearch() {
-    const query = input.trim();
-
-    if (!query || loading || starting) return;
-
-    setInput("");
-    await startResearch(query);
-  }
-
   return (
     <div className="flex h-[600px] flex-col">
       <div className="mb-4">
@@ -485,32 +469,7 @@ export default function ChatPanel({ workspaceId,}: ChatPanelProps) {
         >
           Send
         </button>
-
-        <button
-          type="button"
-          onClick={handleDeepResearch}
-          disabled={!input.trim() || loading || starting}
-          className="rounded-lg border border-purple-300 px-4 py-3 text-sm font-medium text-purple-700 disabled:opacity-50"
-        >
-          {starting ? "Starting..." : "Deep Research"}
-        </button>
       </form>
-
-      {researchError && (
-        <p className="mt-3 text-sm text-red-600">
-          {researchError}
-        </p>
-      )}
-
-      {research && (
-        <div className="mt-4 space-y-4">
-          <ResearchProgress research={research} />
-
-          {research.status === "completed" && (
-            <ResearchReport research={research} />
-          )}
-        </div>
-      )}
       
       {selectedCitation && (
         <CitationModal

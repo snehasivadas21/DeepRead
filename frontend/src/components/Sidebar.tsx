@@ -7,7 +7,6 @@ import { apiRequest } from "@/services/api";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: "⌂" },
-  { name: "Evaluation", href: "/evaluation", icon: "⌕" },
   { name: "Profile", href: "/profile", icon: "◯" },
 ];
 
@@ -20,7 +19,6 @@ export default function Sidebar() {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } catch {
-      // Continue to login even if logout request fails
     }
     router.push("/login");
   }

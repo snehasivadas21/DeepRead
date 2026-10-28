@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
@@ -11,7 +11,7 @@ from app.models.evaluation_run import EvaluationRun
 
 from app.services.evaluation_service import evaluate_retrieval
 
-from app.schemas.evaluation import EvaluationRunResponse
+from app.schemas.evaluation import EvaluationRunResponse, EvaluationResultResponse
 from pydantic import BaseModel
 
 
@@ -21,7 +21,7 @@ router = APIRouter(
 )
 
 
-@router.post("/run", response_model=EvaluationRunResponse)
+@router.post("/run", response_model=EvaluationResultResponse)
 def run_evaluation(
     case_id: int,
     top_k: int = 5,
@@ -144,3 +144,59 @@ def get_evaluation_history(
         .all()
     )
     return evaluation_runs
+
+@router.get("/datasets")
+def list_evaluation_datasets(
+    workspace_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(
+            Workspace.id == workspace_id,
+            Workspace.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    return (
+        db.query(EvaluationDataset)
+        .filter(EvaluationDataset.workspace_id == workspace_id)
+        .order_by(EvaluationDataset.created_at.desc())
+        .all()
+    )
+
+
+@router.get("/datasets/{dataset_id}/cases")
+def list_evaluation_cases(
+    dataset_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    dataset = (
+        db.query(EvaluationDataset)
+        .join(Workspace, EvaluationDataset.workspace_id == Workspace.id)
+        .filter(
+            EvaluationDataset.id == dataset_id,
+            Workspace.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+
+    return (
+        db.query(EvaluationCase)
+        .filter(
+            EvaluationCase.dataset_id == dataset_id,
+            EvaluationCase.is_active == True,
+        )
+        .order_by(EvaluationCase.created_at.desc())
+        .all()
+    )
+

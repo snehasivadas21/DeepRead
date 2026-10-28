@@ -43,7 +43,6 @@ export default function ProfileForm({ profile, updating, onSave }: ProfileFormPr
     setSelectedFile(file);
     setRemovePhoto(false);
 
-    // Preview only; upload the original File separately.
     const reader = new FileReader();
     reader.onload = () => setProfileImage(reader.result as string);
     reader.readAsDataURL(file);

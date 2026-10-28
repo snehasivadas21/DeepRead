@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { createResearch, getResearchDetails,} from "@/services/research.service";
+import { createResearch, getResearchDetails, getResearchHistory} from "@/services/research.service";
 import type { ResearchDetails } from "@/types/research";
 
 export function useResearch(workspaceId: number) {
@@ -13,6 +13,32 @@ export function useResearch(workspaceId: number) {
   const [research, setResearch] = useState<ResearchDetails | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    async function fetchHistory() {
+      try {
+        const items = await getResearchHistory(accessToken!);
+        setHistory(items);
+      } catch (err) {
+        console.error("Failed to load research history:", err);
+      }
+    }
+
+    void fetchHistory();
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (research?.status !== "completed" &&
+        research?.status !== "failed") return;
+    if (!accessToken) return;
+
+    getResearchHistory(accessToken)
+      .then(setHistory)
+      .catch(console.error);
+  }, [research?.status, accessToken]);
 
   const startResearch = useCallback(
     async (query: string) => {
@@ -95,6 +121,21 @@ export function useResearch(workspaceId: number) {
     };
   }, [researchId, accessToken, research?.status]);
 
+  async function loadResearch(id: number) {
+    if (!accessToken) return;
+
+    try {
+      setError(null);
+      setResearchId(id);
+      const details = await getResearchDetails(id, accessToken);
+      setResearch(details);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load research."
+      );
+    }
+  }
+
   function resetResearch() {
     setResearchId(null);
     setResearch(null);
@@ -108,5 +149,7 @@ export function useResearch(workspaceId: number) {
     error,
     startResearch,
     resetResearch,
+    history,
+    loadResearch,
   };
 }

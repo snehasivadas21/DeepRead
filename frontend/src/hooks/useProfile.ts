@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {getProfile,updateProfile,} from "@/services/profile.service";
-import {UserProfile,ProfileUpdateData,} from "@/types/profile";
+import {UserProfile,} from "@/types/profile";
 import { useAuth } from "@/context/AuthContext";
 
 export function useProfile() {
@@ -11,9 +11,16 @@ export function useProfile() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
 
-  const { accessToken } = useAuth();
+  const { accessToken, isAuthLoading } = useAuth();
 
   const fetchProfile = useCallback(async () => {
+    if (isAuthLoading) return;
+
+    if (!accessToken) {
+      setLoading(false);
+      return;
+    };
+
     try {
       setLoading(true);
       setError("");
@@ -30,10 +37,14 @@ export function useProfile() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accessToken, isAuthLoading]);
+
+  useEffect(()=>{
+    fetchProfile();
+  },[fetchProfile])
 
   const saveProfile = async (
-    data: ProfileUpdateData
+    data: FormData
   ) => {
     try {
       setUpdating(true);

@@ -165,6 +165,18 @@ export default function LoginPage() {
           >
             Continue with Google
           </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href =
+                `${process.env.NEXT_PUBLIC_API_URL}/auth/github/login`;
+            }}
+            className="w-full rounded-lg border px-4 py-3"
+          >
+            Continue with GitHub
+          </button>
+
 
           <p className="text-center text-sm text-gray-600">
             Don&apos;t have an account?{" "}

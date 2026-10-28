@@ -29,3 +29,13 @@ export async function getResearchDetails(
     accessToken,
   );
 }
+
+export async function getResearchHistory(
+  accessToken: string,
+): Promise<ResearchCreated[]> {
+  return apiRequest(
+    "/research/",
+    {},
+    accessToken,
+  );
+}
