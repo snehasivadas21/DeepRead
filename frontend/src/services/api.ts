@@ -5,9 +5,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 export async function apiRequest(
@@ -15,6 +12,8 @@ export async function apiRequest(
   options: RequestInit = {},
   accessToken?: string | null,
 ) {
+  const isFormData = options.body instanceof FormData;
+
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
   };
@@ -23,8 +22,10 @@ export async function apiRequest(
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  if (options.body instanceof FormData) {
+  if (isFormData) {
     delete headers["Content-Type"];
+  } else if (options.body) {
+    headers["Content-Type"] = "application/json";
   }
 
   try {

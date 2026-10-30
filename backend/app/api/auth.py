@@ -81,8 +81,16 @@ def verify_email(token: str, db:Session = Depends(get_db)):
     if verification.verified_at is not None:
         raise HTTPException(status_code=400,detail="Email already verified")
 
-    if verification.expires_at < datetime.now(timezone.utc):
-            raise HTTPException(status_code=400,detail="Verification token has expired")
+    expires_at = verification.expires_at
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail="Verification token has expired"
+        )
 
     user = (db.query(User).filter(User.id == verification.user_id).first())
 
@@ -158,7 +166,12 @@ def refresh_access_token(request: Request,response: Response, db: Session = Depe
     if not stored_token:
         raise HTTPException(status_code=401,detail="Invalid or revoked refresh token",)
 
-    if stored_token.expires_at < datetime.now(timezone.utc):
+    expires_at = stored_token.expires_at
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401,detail="Refresh token has expired",)
 
     stored_token.revoked_at = datetime.now(timezone.utc)
@@ -238,8 +251,16 @@ def reset_password(data: ResetPasswordRequest,db: Session = Depends(get_db)):
     if not reset_record:
         raise HTTPException(status_code=400,detail="Invalid or already used reset token")
 
-    if reset_record.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400,detail="Reset token has expired")
+    expires_at = reset_record.expires_at
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail="Reset token has expired"
+        )
 
     user = (db.query(User).filter(User.id == reset_record.user_id).first())
 
@@ -306,6 +327,17 @@ async def google_callback(
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
 
+    refresh_token_record = RefreshToken(
+        user_id=user.id,
+        token_hash=hash_refresh_token(refresh_token),
+        expires_at=datetime.now(timezone.utc)
+            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db.add(refresh_token_record)
+    db.commit()
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -315,9 +347,20 @@ async def google_callback(
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
 
-    return RedirectResponse(
+    redirect_response = RedirectResponse(
         url=f"http://localhost:3000/google-callback?access_token={access_token}"
     )
+
+    redirect_response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+    return redirect_response
 
 @router.get("/github/login")
 async def github_login(request: Request):

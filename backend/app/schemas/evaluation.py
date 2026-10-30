@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvaluationRunResponse(BaseModel):
@@ -37,3 +37,11 @@ class EvaluationResultResponse(BaseModel):
     answer_relevance: float
     faithfulness: float
     answer_quality_explanation: str
+class EvaluationDatasetCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class EvaluationCaseCreate(BaseModel):
+    question: str = Field(min_length=1)
+    expected_answer: str | None = None
+    relevant_chunk_ids: list[int] = Field(default_factory=list)
