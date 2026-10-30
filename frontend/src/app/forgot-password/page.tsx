@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
           Enter your email and we&apos;ll send you a password reset link.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <input
             type="email"
             placeholder="Email address"

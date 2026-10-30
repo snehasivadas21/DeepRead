@@ -8,11 +8,12 @@ from app.models.users import User
 from app.models.workspaces import Workspace
 from app.models.evaluation import EvaluationCase, EvaluationDataset
 from app.models.evaluation_run import EvaluationRun
+from app.models.sources import Source
+from app.models.document_chunks import DocumentChunk
 
 from app.services.evaluation_service import evaluate_retrieval
 
-from app.schemas.evaluation import EvaluationRunResponse, EvaluationResultResponse
-from pydantic import BaseModel
+from app.schemas.evaluation import EvaluationRunResponse, EvaluationResultResponse, EvaluationCaseCreate, EvaluationDatasetCreate
 
 
 router = APIRouter(
@@ -105,6 +106,9 @@ def run_evaluation(
         f1_at_k=result["f1_at_k"],
         retrieved_chunk_ids=result["retrieved_chunk_ids"],
         relevant_chunk_ids=result["relevant_chunk_ids"],
+        answer=result["answer"],
+        answer_relevance=result["answer_relevance"],
+        faithfulness=result["faithfulness"],
     )
 
     db.add(evaluation_run)
@@ -199,4 +203,97 @@ def list_evaluation_cases(
         .order_by(EvaluationCase.created_at.desc())
         .all()
     )
+
+@router.post("/datasets")
+def create_evaluation_dataset(
+    data: EvaluationDatasetCreate,
+    workspace_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(
+            Workspace.id == workspace_id,
+            Workspace.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    dataset = EvaluationDataset(
+        name=data.name.strip(),
+        workspace_id=workspace.id,
+    )
+
+    db.add(dataset)
+    db.commit()
+    db.refresh(dataset)
+
+    return dataset
+
+@router.post("/datasets/{dataset_id}/cases")
+def create_evaluation_case(
+    dataset_id: int,
+    data: EvaluationCaseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    dataset = (
+        db.query(EvaluationDataset)
+        .join(Workspace, EvaluationDataset.workspace_id == Workspace.id)
+        .filter(
+            EvaluationDataset.id == dataset_id,
+            Workspace.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not dataset:
+        raise HTTPException(
+            status_code=404,
+            detail="Evaluation dataset not found",
+        )
+
+    chunk_ids = set(data.relevant_chunk_ids)
+
+    if chunk_ids:
+        valid_chunk_ids = {
+            chunk_id
+            for (chunk_id,) in (
+                db.query(DocumentChunk.id)
+                .join(Source, DocumentChunk.source_id == Source.id)
+                .filter(
+                    Source.workspace_id == dataset.workspace_id,
+                    DocumentChunk.id.in_(chunk_ids),
+                )
+                .all()
+            )
+        }
+
+        invalid_ids = chunk_ids - valid_chunk_ids
+
+        if invalid_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Some relevant chunk IDs do not belong to this "
+                    f"workspace: {sorted(invalid_ids)}"
+                ),
+            )
+
+    case = EvaluationCase(
+        dataset_id=dataset.id,
+        question=data.question.strip(),
+        expected_answer=data.expected_answer,
+        relevant_chunk_ids=data.relevant_chunk_ids,
+    )
+
+    db.add(case)
+    db.commit()
+    db.refresh(case)
+
+    return case
 

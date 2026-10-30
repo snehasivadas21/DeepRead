@@ -300,10 +300,7 @@ export default function EvaluationPanel({
             <Metric label="F1@K" value={result.f1_at_k} />
             <Metric label="Answer relevance" value={result.answer_relevance} />
             <Metric label="Faithfulness" value={result.faithfulness} />
-            <Metric
-              label="Relevant chunks found"
-              value={null}
-            />
+            <Metric label="Relevant chunks found" value={result.relevant_found}/>
           </div>
 
           <div className="rounded-xl border bg-white p-5">
